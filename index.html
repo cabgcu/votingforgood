@@ -21,7 +21,6 @@
         // --- START: FIREBASE CONNECTION SETUP FOR GITHUB PAGES ---
         const APP_PROJECT_ID = 'lip-sync-2025'; // Your Project ID
 
-        const appId = APP_PROJECT_ID; 
         const initialAuthToken = null; 
 
         const firebaseConfig = { // YOUR FIREBASE CONFIG OBJECT
@@ -34,6 +33,9 @@
             appId: "1:118581305479:web:dde6a7b83b0fd377c7d822",
             measurementId: "G-NT9FG1XLMG"
         };
+        
+        // FIX: Ensure appId is set correctly from the config object for Firestore paths
+        const appId = firebaseConfig.projectId;
         // --- END: FIREBASE CONNECTION SETUP FOR GITHUB PAGES ---
 
         if (Object.keys(firebaseConfig).length > 0) {
