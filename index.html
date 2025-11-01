@@ -4,17 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time Lip Sync Vote</title>
-    <!-- Tailwind CSS CDN --><script src="https://cdn.tailwindcss.com"></script>
-    <!-- FingerprintJS CDN for Device ID --><script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs/dist/fp.min.js"></script>
-    <!-- Firebase SDKs --><script type="module">
+    
+
+<script src="https://cdn.tailwindcss.com"></script>
+    
+
+<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs/dist/fp.min.js"></script>
+    
+
+<script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, writeBatch, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables provided by the Canvas environment (these must be present when running in the Canvas)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? initialAuthToken : null;
+        // --- START: FIREBASE CONNECTION SETUP FOR GITHUB PAGES ---
+        const APP_PROJECT_ID = 'lip-sync-2025'; // Your Project ID
+
+        const appId = APP_PROJECT_ID; 
+        const initialAuthToken = null; 
+
+        const firebaseConfig = { // YOUR FIREBASE CONFIG OBJECT
+            // FIX: Using the new, correct API Key to authenticate the app.
+            apiKey: "AIzaSyAyCq6jTA6IYAjyu-sBivAMfL2CMe2l2zg",
+            authDomain: "lip-sync-2025.firebaseapp.com",
+            projectId: APP_PROJECT_ID, 
+            storageBucket: "lip-sync-2025.firebasestorage.app",
+            messagingSenderId: "118581305479",
+            appId: "1:118581305479:web:dde6a7b83b0fd377c7d822",
+            measurementId: "G-NT9FG1XLMG"
+        };
+        // --- END: FIREBASE CONNECTION SETUP FOR GITHUB PAGES ---
 
         if (Object.keys(firebaseConfig).length > 0) {
             // Set up global Firebase variables
@@ -23,7 +43,7 @@
             window.auth = getAuth(window.app);
             setLogLevel('debug'); // Enable detailed Firebase logging
 
-            // Global authentication process: Sign in user anonymously
+            // Global authentication process
             onAuthStateChanged(window.auth, (user) => {
                 if (user) {
                     window.userId = user.uid;
@@ -38,7 +58,7 @@
                 }
             });
 
-            // Initial sign-in with custom token if available (for Canvas environment)
+            // Initial sign-in with custom token if available
             (async () => {
                 try {
                     if (initialAuthToken) {
@@ -68,7 +88,7 @@
             };
 
         } else {
-             console.error("Firebase config is missing or invalid. Application cannot run.");
+             console.error("Firebase config is missing. Application cannot run.");
         }
     </script>
     <style>
@@ -96,94 +116,142 @@
 <body class="bg-black text-white h-screen overflow-hidden flex flex-col items-center justify-center font-sans">
     <video autoplay loop muted playsinline id="login-bg-video" class="fixed inset-0 w-full h-full object-cover z-[-10] opacity-80"></video>
 
-    <!-- LOGIN SCREEN --><div id="login-screen" class="fixed inset-0 flex items-center justify-center p-4">
-        <!-- EDITED: Increased max-width from max-w-sm to max-w-md, min-height, and padding from p-6 to p-8 --><div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[440px] shadow-2xl transition-all duration-300">
-            <!-- EDITED: Increased max-width from max-w-[180px] to max-w-[240px] and margin bottom to mb-6 --><img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
+    
 
-            <!-- EDITED: Increased text size from text-sm to text-base, margin bottom to mb-8, and max-width --><p id="location-error" class="text-white/70 text-base mb-8 max-w-sm transition-colors duration-300">
+<div id="login-screen" class="fixed inset-0 flex items-center justify-center p-4">
+        
+
+<div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[440px] shadow-2xl transition-all duration-300">
+            
+
+<img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
+
+            
+
+<p id="location-error" class="text-white/70 text-base mb-8 max-w-sm transition-colors duration-300">
                 Location Access Is Required To Enable Voting
             </p>
 
-            <!-- EDITED: Increased min-width, padding, and text size --><button id="location-btn" class="w-auto min-w-[180px] px-8 py-3 text-base tracking-tight bg-black border border-white/50 text-white rounded-xl shadow-lg hover:shadow-white/40 hover:bg-white/10 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+            
+
+<button id="location-btn" class="w-auto min-w-[180px] px-8 py-3 text-base tracking-tight bg-black border border-white/50 text-white rounded-xl shadow-lg hover:shadow-white/40 hover:bg-white/10 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                 <span>Begin Voting</span>
             </button>
 
-            <!-- EDITED: Increased padding, text size, and max-width --><footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
-                <!-- EDITED: Increased height from h-10 to h-12 and margin bottom to mb-3 --><img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png?updatedAt=1761432550912" alt="Canyon Activities Board Logo" class="h-12 mb-3 object-contain">
+            
+
+<footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
+                
+
+<img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png?updatedAt=1761432550912" alt="Canyon Activities Board Logo" class="h-12 mb-3 object-contain">
                 <p>Follow Us At <b>@CABGCU</b> On Instagram</p>
                 <p id="user-id-display" class="mt-2 text-[0.65rem] opacity-50"></p>
             </footer>
         </div>
     </div>
 
-    <!-- VOTING SCREEN --><div id="voting-screen" class="hidden fixed inset-0 flex items-center justify-center p-4">
-        <!-- MODIFIED: Added flex-col and max-h-[90vh] to make the card constrained and allow scrolling inside --><div class="glass-card w-11/12 max-w-md rounded-3xl p-6 text-center shadow-2xl flex flex-col max-h-[90vh]">
+    
+
+<div id="voting-screen" class="hidden fixed inset-0 flex items-center justify-center p-4">
+        
+
+<div class="glass-card w-11/12 max-w-md rounded-3xl p-6 text-center shadow-2xl flex flex-col max-h-[90vh]">
             <img class="w-full max-w-[180px] mx-auto mb-4 flex-shrink-0" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
-            <!-- UPDATED: Title text class changed to plain white --><h3 class="text-2xl font-bold mb-6 text-white flex-shrink-0">
+            
+
+<h3 class="text-2xl font-bold mb-6 text-white flex-shrink-0">
                 Vote For Your Favorite Lip Sync Team!
             </h3>
 
-            <!-- UPDATED: Six performer cards with new names and IDs --><div id="performers-container" class="space-y-4 overflow-y-auto flex-1 pb-2">
+            
+
+<div id="performers-container" class="space-y-4 overflow-y-auto flex-1 pb-2">
                 
-                <!-- Performer 1: Below --><div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option1">
+                
+
+<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option1">
                     <img src="https://i.imgur.com/DIyK2zX.jpeg" alt="Performer Below" class="w-full aspect-video object-cover rounded-lg mb-2">
                     <h4 class="m-0 text-lg font-semibold mb-0">Below</h4>
                 </div>
 
-                <!-- Performer 2: Deliverance (NEW IMAGE) --><div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option2">
+                
+
+<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option2">
                     <img src="https://i.imgur.com/s7Unz9r.jpeg" alt="Performer Deliverance" class="w-full aspect-video object-cover rounded-lg mb-2">
                     <h4 class="m-0 text-lg font-semibold mb-0">Deliverance</h4>
                 </div>
                 
-                <!-- Performer 3: Mask Off (NEW IMAGE) --><div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option3">
+                
+
+<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option3">
                     <img src="https://i.imgur.com/x0BI8Mc.jpeg" alt="Performer Mask Off" class="w-full aspect-video object-cover rounded-lg mb-2">
                     <h4 class="m-0 text-lg font-semibold mb-0">Mask Off</h4>
                 </div>
 
-                <!-- Performer 4: Metro Motion (IMAGE FOCAL POINT EDITED) --><div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option4">
+                
+
+<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option4">
                     <img src="https://i.imgur.com/4rG47gL.jpeg" alt="Performer Metro Motion" class="w-full aspect-video object-cover object-top rounded-lg mb-2">
                     <h4 class="m-0 text-lg font-semibold mb-0">Metro Motion</h4>
                 </div>
 
-                <!-- Performer 5: Sin Games (NEW IMAGE) --><div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option5">
+                
+
+<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option5">
                     <img src="https://i.imgur.com/k75mMUz.jpeg" alt="Performer Sin Games" class="w-full aspect-video object-cover rounded-lg mb-2">
                     <h4 class="m-0 text-lg font-semibold mb-0">Sin Games</h4>
                 </div>
 
-                <!-- Performer 6: Anonymity (NEW IMAGE) --><div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option6">
+                
+
+<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer transition-all duration-200 hover:border-white/50" data-vote-id="option6">
                     <img src="https://i.imgur.com/3dJQFeX.jpeg" alt="Performer Anonymity" class="w-full aspect-video object-cover rounded-lg mb-2">
                     <h4 class="m-0 text-lg font-semibold mb-0">Anonymity</h4>
                 </div>
 
             </div>
             
-            <!-- NEW: Global Submit Button (Disabled until a selection is made) --><!-- UPDATED: Button styles copied from login screen's location-btn --><button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base tracking-tight bg-black border border-white/50 text-white rounded-xl shadow-lg hover:shadow-white/40 hover:bg-white/10 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0" disabled>
+            
+
+<button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base tracking-tight bg-black border border-white/50 text-white rounded-xl shadow-lg hover:shadow-white/40 hover:bg-white/10 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0" disabled>
                 Select a Performer to Vote
             </button>
         </div>
     </div>
 
-    <!-- CONFIRMATION SCREEN --><div id="confirmation-screen" class="hidden fixed inset-0 flex items-center justify-center p-4">
+    
+
+<div id="confirmation-screen" class="hidden fixed inset-0 flex items-center justify-center p-4">
         <div class="glass-card w-11/12 max-w-sm rounded-3xl p-8 text-center shadow-2xl">
-            <!-- UPDATED: Text color uses custom pink --><h3 class="text-3xl font-bold text-[#C27A88] mb-4">
+            
+
+<h3 class="text-3xl font-bold text-[#C27A88] mb-4">
                 ✅ Vote Submitted!
             </h3>
             <p class="text-white/80 mb-6">
                 Thank you for participating! The results will update live below.
             </p>
-            <!-- UPDATED: Button styles copied from login screen's location-btn --><button id="show-results-btn" class="w-full py-3 px-8 text-base tracking-tight bg-black border border-white/50 text-white rounded-xl shadow-lg hover:shadow-white/40 hover:bg-white/10 transition duration-200">
+            
+
+<button id="show-results-btn" class="w-full py-3 px-8 text-base tracking-tight bg-black border border-white/50 text-white rounded-xl shadow-lg hover:shadow-white/40 hover:bg-white/10 transition duration-200">
                 View Live Results
             </button>
         </div>
     </div>
 
-    <!-- RESULTS SCREEN --><div id="results-screen" class="hidden fixed inset-0 flex items-center justify-center p-4">
+    
+
+<div id="results-screen" class="hidden fixed inset-0 flex items-center justify-center p-4">
         <div class="glass-card w-11/12 max-w-xl rounded-3xl p-6 text-center shadow-2xl">
-            <!-- UPDATED: Gradient end color uses custom pink --><h3 class="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-gold-400 to-[#C27A88]">
+            
+
+<h3 class="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-gold-400 to-[#C27A88]">
                 Live Voting Results
             </h3>
             <div id="results-list" class="space-y-4">
-                <!-- Results will be injected here --></div>
+                
+
+</div>
             <p class="text-sm text-white/50 mt-6">
                 Refreshing in real-time as votes are cast.
             </p>
@@ -232,15 +300,30 @@
         return (lat >= minLat && lat <= maxLat && long >= minLong && long <= maxLong);
     }
 
+    // UPDATED: Added try/catch for play() and moved to immediate call on load
     function setLoginVideo() {
         const videoEl = document.getElementById('login-bg-video');
         if (!videoEl || LOGIN_VIDEOS.length === 0) return;
+        
         let lastIndex = sessionStorage.getItem(VIDEO_SESSION_KEY);
         let nextIndex = (lastIndex === null) ? 0 : (parseInt(lastIndex, 10) + 1) % LOGIN_VIDEOS.length;
         sessionStorage.setItem(VIDEO_SESSION_KEY, nextIndex);
+        
         videoEl.src = LOGIN_VIDEOS[nextIndex];
         videoEl.load();
+
+        // Attempt to play the video explicitly to bypass some autoplay restrictions
+        // Browsers require mute + playsinline for autoplay to work.
+        try {
+            videoEl.play();
+        } catch (error) {
+            // Log error but don't stop execution (e.g., if user hasn't interacted with the page)
+            console.warn("Video failed to auto-play:", error);
+        }
     }
+    // Call setLoginVideo immediately upon script load, before initApp
+    setLoginVideo();
+
 
     function setLoading(isLoading, message = 'Verifying your location...') {
         locationButton.disabled = isLoading;
@@ -442,7 +525,6 @@
 
         // 3. Start real-time results listener
         subscribeToResults();
-        setLoginVideo(); // Start the background video
     }
 
 
@@ -456,6 +538,15 @@
             showError('Identity service is loading. Please wait.');
             return;
         }
+
+        // CRITICAL CHECK: Ensure Firebase Auth is ready before proceeding to use DB
+        if (!window.auth || !window.auth.currentUser || !window.auth.currentUser.uid) {
+             showError('Authentication service not ready. Please refresh or check console for Firebase config errors.');
+             // Ensure button is re-enabled if authentication fails
+             setLoading(false);
+             return;
+        }
+
 
         setLoading(true, 'Verifying location and vote status...');
 
@@ -472,7 +563,7 @@
         navigator.geolocation.getCurrentPosition(
             geolocationSuccess,
             geolocationError,
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // EDITED: Added maximumAge: 0 to ensure non-cached reading
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
 
@@ -495,10 +586,3 @@
     // If running outside the canvas environment, call it directly:
     if (typeof window.app === 'undefined') {
         // Mock init for local testing outside the Canvas environment
-        window.initApp = initApp;
-        window.initApp();
-    }
-
-</script>
-</body>
-</html>
