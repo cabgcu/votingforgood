@@ -33,7 +33,31 @@ let selectedVoteId = null;
 let selectedVoteName = "";
 let appInitialized = false;
 let votingEnabled = true;
-const geofence = { minLat: 33.509539, maxLat: 33.679000, minLong: -112.256500, maxLong: -112.127604 };
+
+/* 🧭 THREE ACTIVE GEOFENCES */
+const geofences = [
+  // Main Campus Core (Arena, Quad, Lopes Way)
+  {
+    minLat: 33.508268,
+    maxLat: 33.511748,
+    minLong: -112.130755,
+    maxLong: -112.126984
+  },
+  // Arena Entrance (north small block)
+  {
+    minLat: 33.512279,
+    maxLat: 33.512623,
+    minLong: -112.130699,
+    maxLong: -112.130440
+  },
+  // House-Sized Box (Admin/Test Zone near 33.6788195, -112.256398)
+  {
+    minLat: 33.6786695,
+    maxLat: 33.6789695,
+    minLong: -112.256548,
+    maxLong: -112.256248
+  }
+];
 
 let locationError, locationButton, performersContainer, submitVoteButton, confirmationMessage;
 
@@ -49,10 +73,13 @@ function setScreen(id) {
   document.querySelectorAll(".screen").forEach(el => el.classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
 }
+
 function isInsideGeofence(lat, long) {
-  const { minLat, maxLat, minLong, maxLong } = geofence;
-  return (lat >= minLat && lat <= maxLat && long >= minLong && long <= maxLong);
+  return geofences.some(({ minLat, maxLat, minLong, maxLong }) =>
+    lat >= minLat && lat <= maxLat && long >= minLong && long <= maxLong
+  );
 }
+
 function setLoading(isLoading, message = 'Verifying your location...') {
   if (!locationButton) return;
   locationButton.disabled = isLoading;
@@ -65,6 +92,7 @@ function setLoading(isLoading, message = 'Verifying your location...') {
     locationButton.innerHTML = '<span>Begin Voting</span>';
   }
 }
+
 function showError(msg) {
   setLoading(false);
   if (!locationError) return;
@@ -75,9 +103,7 @@ function showError(msg) {
 function handleCardSelection(e) {
   const card = e.target.closest('.performer-card');
   if (!card || !votingEnabled) return;
-  document.querySelectorAll('.performer-card').forEach(c=>{
-    c.classList.remove('selected');
-  });
+  document.querySelectorAll('.performer-card').forEach(c => c.classList.remove('selected'));
   card.classList.add('selected');
   selectedVoteId = card.dataset.voteId;
   selectedVoteName = card.querySelector('h4').textContent;
@@ -139,7 +165,7 @@ async function handleLocationCheck() {
         showError('Unable to verify your location. Please refresh and try again.');
       }
     },
-    { timeout:10000 }
+    { timeout: 10000 }
   );
 }
 
@@ -184,7 +210,6 @@ signInAnonymously(auth).catch(console.error);
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
 html, body {
   margin: 0;
   height: 100%;
@@ -192,7 +217,6 @@ html, body {
   font-family: 'Inter', sans-serif;
   color: white;
 }
-
 #bg-video {
   position: fixed;
   top: 0; left: 0;
@@ -201,7 +225,6 @@ html, body {
   z-index: -1;
   pointer-events: none;
 }
-
 .glass-card {
   background-color: rgba(0,0,0,0.45);
   backdrop-filter: blur(24px);
@@ -209,7 +232,6 @@ html, body {
   border-bottom-color: rgba(255,255,255,0.03);
   box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
-
 .spinner {
   border:3px solid rgba(255,255,255,0.15);
   border-top-color:#fff;
@@ -220,7 +242,6 @@ html, body {
   margin:0 auto;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-
 @keyframes pink-green-glow {
   0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
   50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
@@ -230,23 +251,19 @@ html, body {
   background-color: rgba(0,0,0,0.6);
   animation: pink-green-glow 8s ease-in-out infinite;
 }
-
 .performer-card.selected {
   border: 2px solid white;
   animation: pink-green-glow 8s ease-in-out infinite;
 }
-
 #submit-vote-btn:hover {
   border-color: #60A34D;
   box-shadow: 0 0 10px 2px rgba(96,163,77,0.9);
 }
-
 #performers-container {
   overflow-y: auto;
   max-height: 60vh;
   padding-right: 4px;
 }
-
 .screen {
   position: fixed;
   inset: 0;
@@ -255,7 +272,6 @@ html, body {
   justify-content: center;
   padding: 1rem;
 }
-
 #login-screen {
   overflow-y: auto;
 }
