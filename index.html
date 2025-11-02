@@ -58,7 +58,7 @@ const geofences = [
   { minLat: 33.6786695, maxLat: 33.6789695, minLong: -112.256548, maxLong: -112.256248 }
 ];
 
-/* ========= DOM Elements ========= */
+/* ========= DOM ========= */
 let locationError, locationButton, performersContainer, submitVoteButton, confirmationMessage, confirmationImage, dots;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -70,11 +70,14 @@ document.addEventListener("DOMContentLoaded", () => {
   confirmationImage = document.getElementById("confirmation-image");
   dots = document.querySelectorAll(".dot");
 
-  // Dots follow scroll position
+  // Center the first card when voting loads
+  performersContainer.scrollTo({ left: 0, behavior: "instant" });
+
+  // Track swipe position for dots
   performersContainer.addEventListener("scroll", () => {
     const cards = document.querySelectorAll(".performer-card");
     const scrollLeft = performersContainer.scrollLeft;
-    const cardWidth = cards[0].offsetWidth + 8;
+    const cardWidth = cards[0].offsetWidth + 12;
     const index = Math.round(scrollLeft / cardWidth);
     dots.forEach((dot, i) => dot.classList.toggle("active", i === index));
   });
@@ -172,6 +175,8 @@ async function handleLocationCheck() {
       const { latitude, longitude } = pos.coords;
       if (isInsideGeofence(latitude, longitude)) {
         setScreen("voting-screen");
+        // Center after loading
+        setTimeout(() => performersContainer.scrollTo({ left: 0, behavior: "smooth" }), 300);
       } else showError("You must be within the event area to vote.");
     },
     () => showError("Location Access required to vote! Please refresh screen."),
@@ -221,45 +226,37 @@ signInAnonymously(auth).catch(console.error);
 </script>
 
 <style>
-/* ==== General ==== */
 html, body { margin:0; height:100%; font-family:'Inter',sans-serif; color:white; background:black; overflow:hidden; }
 #bg-video { position:fixed; top:0; left:0; width:100vw; height:100vh; object-fit:cover; z-index:0; opacity:0.8; }
 
-/* ==== Login Card ==== */
-.glass-card {
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(24px);
-  border-radius: 1.5rem;
-  border: 1px solid rgba(255,255,255,0.15);
-}
+/* Login card */
+.glass-card { background:rgba(0,0,0,0.45); backdrop-filter:blur(24px); border-radius:1.5rem; border:1px solid rgba(255,255,255,0.15); }
 @keyframes pink-green-glow {
-  0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
-  50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
-  100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+  0%{box-shadow:0 0 15px 2px rgba(255,105,180,0.7);}
+  50%{box-shadow:0 0 25px 5px rgba(96,163,77,0.9);}
+  100%{box-shadow:0 0 15px 2px rgba(255,105,180,0.7);}
 }
-button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
+button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
 
-/* ==== Voting Layout ==== */
+/* Performer cards */
 #performers-container {
-  display:flex; gap:0.5rem; overflow-x:auto; scroll-snap-type:x mandatory;
-  -webkit-overflow-scrolling:touch; padding:0 1rem 0.5rem;
+  display:flex; gap:0.5rem; overflow-x:auto;
+  scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+  padding:0 10vw; /* centers first/last cards */
+  scroll-behavior:smooth;
 }
 .performer-card {
-  flex:0 0 55%; max-width:55%; scroll-snap-align:center;
-  transition:transform 0.3s ease;
+  flex:0 0 45%; max-width:45%;
+  scroll-snap-align:center;
   background:rgba(255,255,255,0.05);
   border:1px solid rgba(255,255,255,0.1);
   border-radius:0.75rem; padding:0.5rem;
   aspect-ratio:3/4;
+  transition:transform 0.3s ease;
 }
-.performer-card img {
-  width:100%; border-radius:0.5rem; object-fit:cover;
-}
-.performer-card.selected {
-  border:2px solid #22c55e; box-shadow:0 0 18px 2px rgba(34,197,94,0.6);
-  transform:scale(1.03);
-}
-@media(min-width:768px){.performer-card{flex:0 0 30%;max-width:30%;}}
+.performer-card img{width:100%;border-radius:0.5rem;object-fit:cover;}
+.performer-card.selected{border:2px solid #22c55e;box-shadow:0 0 18px 2px rgba(34,197,94,0.6);transform:scale(1.03);}
+@media(min-width:768px){.performer-card{flex:0 0 25%;max-width:25%;}}
 .dots{display:flex;justify-content:center;gap:6px;margin-top:0.5rem;}
 .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.3);transition:all .3s ease;}
 .dot.active{background:#22c55e;transform:scale(1.25);}
@@ -287,7 +284,7 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
   </div>
 </div>
 
-<!-- VOTING SCREEN -->
+<!-- VOTING -->
 <div id="voting-screen" class="screen hidden text-center relative w-full">
   <img class="w-full max-w-[200px] mx-auto mb-3" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
   <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
