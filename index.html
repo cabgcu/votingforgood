@@ -35,13 +35,9 @@ let appInitialized = false;
 let votingEnabled = true;
 const geofence = { minLat: 33.509539, maxLat: 33.679000, minLong: -112.256500, maxLong: -112.127604 };
 
-let loginScreen, votingScreen, confirmScreen;
 let locationError, locationButton, performersContainer, submitVoteButton, confirmationMessage;
 
 document.addEventListener("DOMContentLoaded", () => {
-  loginScreen = document.getElementById('login-screen');
-  votingScreen = document.getElementById('voting-screen');
-  confirmScreen = document.getElementById('confirmation-screen');
   locationError = document.getElementById('location-error');
   locationButton = document.getElementById('location-btn');
   performersContainer = document.getElementById('performers-container');
@@ -136,7 +132,14 @@ async function handleLocationCheck() {
         showError('You must be within the event area to vote.');
       }
     },
-    () => showError('Please enable location access in your browser settings.')
+    err => {
+      if (err.code === err.PERMISSION_DENIED) {
+        showError('Location access is required to vote. Please refresh and enable location access.');
+      } else {
+        showError('Unable to verify your location. Please refresh and try again.');
+      }
+    },
+    { timeout:10000 }
   );
 }
 
@@ -182,7 +185,12 @@ signInAnonymously(auth).catch(console.error);
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
-body { font-family: 'Inter', sans-serif; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: black url('https://i.imgur.com/Aqrg8yc.mp4') no-repeat center center fixed;
+  background-size: cover;
+  overflow-y: auto;
+}
 
 .glass-card {
   background-color: rgba(0,0,0,0.45);
@@ -223,19 +231,15 @@ body { font-family: 'Inter', sans-serif; }
   box-shadow: 0 0 10px 2px rgba(96,163,77,0.9);
 }
 
-#login-bg-video {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  z-index: -1;
-  opacity: 0.8;
+#performers-container {
+  overflow-y: auto;
+  max-height: 70vh;
+  padding-right: 4px;
 }
 </style>
 </head>
 
-<body class="bg-black text-white h-screen overflow-hidden flex flex-col items-center justify-center">
-<video autoplay loop muted playsinline id="login-bg-video" src="https://i.imgur.com/Aqrg8yc.mp4"></video>
+<body class="bg-black text-white flex flex-col items-center justify-center min-h-screen">
 
 <!-- Login Screen -->
 <div id="login-screen" class="screen fixed inset-0 flex items-center justify-center p-4">
@@ -251,13 +255,13 @@ body { font-family: 'Inter', sans-serif; }
 </div>
 
 <!-- Voting Screen -->
-<div id="voting-screen" class="screen hidden fixed inset-0 flex items-center justify-center p-4">
-  <div class="glass-card w-11/12 max-w-md rounded-3xl p-6 text-center shadow-2xl flex flex-col max-h-[90vh]">
+<div id="voting-screen" class="screen hidden fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
+  <div class="glass-card w-11/12 max-w-md rounded-3xl p-6 text-center shadow-2xl flex flex-col">
     <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
     <h3 class="text-2xl font-bold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
     <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote.</p>
 
-    <div id="performers-container" class="space-y-4 overflow-y-auto flex-1 pb-2">
+    <div id="performers-container" class="space-y-4 flex-1">
       <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Below</h4></div>
       <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Deliverance</h4></div>
       <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Mask Off</h4></div>
