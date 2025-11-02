@@ -70,11 +70,10 @@ document.addEventListener("DOMContentLoaded", () => {
   confirmationImage = document.getElementById("confirmation-image");
   dots = document.querySelectorAll(".dot");
 
-  // Move dots as user scrolls
   performersContainer.addEventListener("scroll", () => {
     const cards = document.querySelectorAll(".performer-card");
     const scrollLeft = performersContainer.scrollLeft;
-    const cardWidth = cards[0].offsetWidth + 16; // include gap
+    const cardWidth = cards[0].offsetWidth + 16;
     const index = Math.round(scrollLeft / cardWidth);
     dots.forEach((dot, i) => dot.classList.toggle("active", i === index));
   });
@@ -186,7 +185,7 @@ async function handleLocationCheck() {
         setScreen("voting-screen");
       } else showError("You must be within the event area to vote.");
     },
-    err => showError("Location access is required to vote."),
+    err => showError("Location Access required to vote! Please refresh screen."),
     { timeout: 10000 }
   );
 }
@@ -213,7 +212,7 @@ function initApp() {
   });
 }
 
-/* ========= Firebase Init + App Check ========= */
+/* ========= Firebase Init ========= */
 const app = initializeApp(firebaseConfig);
 const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
@@ -223,7 +222,7 @@ db = getFirestore(app);
 auth = getAuth(app);
 
 getToken(appCheck)
-  .then(t => console.log("✅ App Check token issued:", t?.token?.slice(0, 25) + "..."))
+  .then(t => console.log("✅ App Check:", t?.token?.slice(0, 25) + "..."))
   .catch(err => console.error("❌ App Check failed:", err));
 
 onAuthStateChanged(auth, u => {
@@ -239,7 +238,6 @@ signInAnonymously(auth).catch(console.error);
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 html, body {
   margin: 0; height: 100%;
   font-family: 'Inter', sans-serif;
@@ -250,35 +248,31 @@ html, body {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   object-fit: cover; z-index: 0; opacity: 0.8;
 }
-.glass-card {
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(24px);
-  border-radius: 1.5rem;
-  border: 1px solid rgba(255,255,255,0.15);
-}
+
+/* Glow */
 @keyframes pink-green-glow {
-  0%   { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
-  50%  { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
+  0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+  50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
   100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
 }
 button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
 
 #performers-container {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 1rem;
+  padding: 0 1rem 1rem;
 }
 .performer-card {
-  flex: 0 0 80%;
-  max-width: 80%;
+  flex: 0 0 70%;
+  max-width: 70%;
   scroll-snap-align: center;
   transition: transform 0.3s ease;
 }
 @media (min-width: 768px) {
-  .performer-card { flex: 0 0 45%; max-width: 45%; }
+  .performer-card { flex: 0 0 40%; max-width: 40%; }
 }
 .performer-card img {
   width: 100%;
@@ -290,6 +284,7 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
   transform: scale(1.02);
 }
 
+/* Dots */
 .dots {
   display: flex;
   justify-content: center;
@@ -323,6 +318,7 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
   margin:0 auto;
 }
 @keyframes spin { to { transform: rotate(360deg) } }
+
 .screen {
   position: fixed; inset: 0;
   display: flex; align-items: center; justify-content: center;
@@ -357,12 +353,12 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
   <p class="text-white/70 text-sm mb-4">Swipe left or right to view all teams.</p>
 
   <div id="performers-container">
-    <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg"><h4 class="text-lg font-semibold mt-2">Below</h4></div>
-    <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg"><h4 class="text-lg font-semibold mt-2">Deliverance</h4></div>
-    <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg"><h4 class="text-lg font-semibold mt-2">Mask Off</h4></div>
-    <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg"><h4 class="text-lg font-semibold mt-2">Metro Motion</h4></div>
-    <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg"><h4 class="text-lg font-semibold mt-2">Sin Games</h4></div>
-    <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg"><h4 class="text-lg font-semibold mt-2">Anonymity</h4></div>
+    <div class="performer-card bg-white/5 border border-white/10 p-3 rounded-xl cursor-pointer" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg"><h4 class="text-base font-semibold mt-2">Below</h4></div>
+    <div class="performer-card bg-white/5 border border-white/10 p-3 rounded-xl cursor-pointer" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg"><h4 class="text-base font-semibold mt-2">Deliverance</h4></div>
+    <div class="performer-card bg-white/5 border border-white/10 p-3 rounded-xl cursor-pointer" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg"><h4 class="text-base font-semibold mt-2">Mask Off</h4></div>
+    <div class="performer-card bg-white/5 border border-white/10 p-3 rounded-xl cursor-pointer" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg"><h4 class="text-base font-semibold mt-2">Metro Motion</h4></div>
+    <div class="performer-card bg-white/5 border border-white/10 p-3 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg"><h4 class="text-base font-semibold mt-2">Sin Games</h4></div>
+    <div class="performer-card bg-white/5 border border-white/10 p-3 rounded-xl cursor-pointer" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg"><h4 class="text-base font-semibold mt-2">Anonymity</h4></div>
   </div>
 
   <div class="dots mt-2">
