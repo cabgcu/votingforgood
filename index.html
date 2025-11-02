@@ -18,7 +18,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
 
 /* ========= Firebase Config ========= */
@@ -40,6 +40,7 @@ let selectedVoteName = "";
 let selectedVoteImage = "";
 let appInitialized = false;
 let votingEnabled = true;
+let currentLat = null, currentLng = null;
 
 /* ========= Performer Data ========= */
 const performerData = {
@@ -132,33 +133,45 @@ function handleCardSelection(e) {
   submitVoteButton.classList.add("ready");
 }
 
-/* ========= Submit Vote ========= */
+/* ========= Secure Vote Submit (Cloud Run) ========= */
 async function submitVote(voteId, btn) {
   if (!visitorId) return showError("Fingerprint not ready.");
   if (!votingEnabled) return showError("Voting is currently disabled.");
+  if (!currentLat || !currentLng) return showError("Location not verified.");
 
   btn.disabled = true;
   btn.textContent = "Submitting...";
 
   try {
-    await setDoc(doc(db, "lip_sync_2025_votes", visitorId), {
-      voteId,
-      createdAt: Date.now(),
-      userId,
-      fingerprint: visitorId,
-      userAgent: navigator.userAgent
+    const res = await fetch("https://submitvote-118581305479.us-central1.run.app", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        candidate: voteId,
+        lat: currentLat,
+        lng: currentLng,
+        visitorId
+      })
     });
 
-    confirmationImage.src = selectedVoteImage;
-    confirmationMessage.innerHTML = `
-      Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>
-      Thank you for attending <b>Lip Sync: For Good!</b>
-    `;
-    setScreen("confirmation-screen");
-  } catch (e) {
+    const data = await res.json();
+    if (data.success) {
+      confirmationImage.src = selectedVoteImage;
+      confirmationMessage.innerHTML = `
+        Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>
+        Thank you for attending <b>Lip Sync: For Good!</b>
+      `;
+      setScreen("confirmation-screen");
+    } else {
+      showError(data.error || "Vote failed.");
+      btn.disabled = false;
+      btn.textContent = "Submit Vote";
+    }
+  } catch (err) {
+    console.error(err);
+    showError("Error sending vote.");
     btn.disabled = false;
     btn.textContent = "Vote Failed – Retry";
-    showError("Error saving vote.");
   }
 }
 
@@ -172,6 +185,8 @@ async function handleLocationCheck() {
     pos => {
       const { latitude, longitude } = pos.coords;
       if (isInsideGeofence(latitude, longitude)) {
+        currentLat = latitude;
+        currentLng = longitude;
         setLoading(false);
         setScreen("voting-screen");
       } else showError("You must be within the event area to vote.");
