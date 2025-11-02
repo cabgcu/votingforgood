@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
   confirmationImage = document.getElementById('confirmation-image');
 });
 
-/* ✅ Preload images */
+/* ✅ Preload performer images */
 const performerImages = [
   "https://i.imgur.com/DIyK2zX.jpeg",
   "https://i.imgur.com/s7Unz9r.jpeg",
@@ -69,10 +69,7 @@ const performerImages = [
   "https://i.imgur.com/k75mMUz.jpeg",
   "https://i.imgur.com/3dJQFeX.jpeg"
 ];
-performerImages.forEach(url => {
-  const img = new Image();
-  img.src = url;
-});
+performerImages.forEach(url => { const img = new Image(); img.src = url; });
 
 function setScreen(id) {
   document.querySelectorAll(".screen").forEach(el => el.classList.add('hidden'));
@@ -85,7 +82,21 @@ function isInsideGeofence(lat, long) {
   );
 }
 
+function setLoading(isLoading, message = 'Verifying your location...') {
+  if (!locationButton) return;
+  locationButton.disabled = isLoading;
+  if (isLoading) {
+    locationButton.classList.remove("glow");
+    locationButton.innerHTML = '<div class="spinner mx-auto"></div>';
+    locationError.textContent = message;
+  } else {
+    locationButton.classList.add("glow");
+    locationButton.innerHTML = '<span>Begin Voting</span>';
+  }
+}
+
 function showError(msg) {
+  setLoading(false);
   if (!locationError) return;
   locationError.textContent = msg;
   locationError.classList.add('text-red-400', 'font-bold');
@@ -102,6 +113,17 @@ function handleCardSelection(e) {
   selectedVoteImage = card.querySelector('img').src;
   submitVoteButton.disabled = false;
   submitVoteButton.textContent = `Submit Vote for ${selectedVoteName}`;
+}
+
+/* 🔸 Check Existing Vote */
+async function checkExistingVote() {
+  if (!visitorId) return false;
+  try {
+    const snap = await getDoc(doc(db, 'lip_sync_2025_votes', visitorId));
+    return snap.exists();
+  } catch {
+    return false;
+  }
 }
 
 /* 🔸 Submit Vote */
@@ -131,21 +153,46 @@ async function submitVote(voteId, btn) {
     console.error(e);
     btn.disabled = false;
     btn.textContent = 'Vote Failed – Retry';
-    showError('Error saving vote.');
+    if (e?.code === 'permission-denied') {
+      showError('You have already voted.');
+      setScreen('confirmation-screen');
+    } else {
+      showError('Error saving vote.');
+    }
   }
 }
 
 /* 🔸 Location Check */
 async function handleLocationCheck() {
   if (!navigator.geolocation) return showError('Your device does not support location access.');
+  if (!votingEnabled) return showError('Voting is currently closed.');
+
+  setLoading(true, 'Checking your location…');
+  const alreadyVoted = await checkExistingVote();
+  if (alreadyVoted) {
+    setScreen('confirmation-screen');
+    showError('You have already voted.');
+    return;
+  }
 
   navigator.geolocation.getCurrentPosition(
     pos => {
       const { latitude, longitude } = pos.coords;
-      if (isInsideGeofence(latitude, longitude)) setScreen('voting-screen');
-      else showError('You must be within the event area to vote.');
+      if (isInsideGeofence(latitude, longitude)) {
+        setLoading(false);
+        setScreen('voting-screen');
+      } else {
+        showError('You must be within the event area to vote.');
+      }
     },
-    err => showError('Location access is required to vote.')
+    err => {
+      if (err.code === err.PERMISSION_DENIED) {
+        showError('Location access is required to vote.');
+      } else {
+        showError('Unable to verify your location.');
+      }
+    },
+    { timeout: 10000 }
   );
 }
 
@@ -158,7 +205,7 @@ function initApp() {
       locationButton.disabled = false;
       locationButton.classList.add("glow");
     })
-    .catch(() => showError('Unable to verify identity. Please refresh and try again.'));
+    .catch(() => showError('Unable to verify identity. Please refresh.'));
 
   locationButton.addEventListener('click', handleLocationCheck);
   performersContainer.addEventListener('click', handleCardSelection);
@@ -174,7 +221,6 @@ function initApp() {
 const app = initializeApp(firebaseConfig);
 db = getFirestore(app);
 auth = getAuth(app);
-
 onAuthStateChanged(auth, u => {
   if (u) {
     userId = u.uid;
@@ -199,7 +245,7 @@ html, body {
   background-color: black;
 }
 
-/* ✅ Background Video */
+/* Background Video */
 #bg-video {
   position: fixed;
   top: 0;
@@ -212,54 +258,53 @@ html, body {
   background-color: black;
 }
 
-/* ✅ Layers */
+/* Layout */
 .screen, .glass-card {
   position: relative;
   z-index: 1;
 }
-
 .glass-card {
   background-color: rgba(0,0,0,0.45);
   backdrop-filter: blur(24px);
+  border-radius: 1.5rem;
   border: 1px solid rgba(255,255,255,0.15);
-  border-bottom-color: rgba(255,255,255,0.03);
   box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
-/* ✅ Glow Animation (used for Begin Voting button only) */
+/* Glow Animation */
 @keyframes pink-green-glow {
   0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
   50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
   100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
 }
-button.glow {
-  animation: pink-green-glow 8s ease-in-out infinite;
-}
+button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
 
-/* ✅ Performer Cards */
-.performer-card {
-  transition: border-color 0.3s ease;
-}
-.performer-card:hover {
-  border-color: rgba(255,255,255,0.5);
-}
+/* Performer Cards */
+.performer-card { transition: border-color 0.3s ease; }
+.performer-card:hover { border-color: rgba(255,255,255,0.5); }
 .performer-card.selected {
-  border: 2px solid #22c55e; /* green */
+  border: 2px solid #22c55e;
   box-shadow: 0 0 20px 3px rgba(34,197,94,0.5);
-  animation: none;
 }
-.performer-card.selected:hover {
-  border-color: #22c55e !important;
+.spinner {
+  border:3px solid rgba(255,255,255,0.15);
+  border-top-color:#fff;
+  border-radius:50%;
+  width:22px;height:22px;
+  animation:spin .9s linear infinite;
+  display:block;
+  margin:0 auto;
 }
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* ✅ Scroll Container */
+/* Scroll */
 #performers-container {
   overflow-y: auto;
   max-height: 60vh;
   padding-right: 4px;
 }
 
-/* ✅ Screen Layout */
+/* Screens */
 .screen {
   position: fixed;
   inset: 0;
@@ -272,12 +317,12 @@ button.glow {
 </head>
 
 <body>
-<!-- ✅ Background Video -->
+<!-- Background Video -->
 <video autoplay muted playsinline loop preload="auto" id="bg-video">
   <source src="https://i.imgur.com/Aqrg8yc.mp4" type="video/mp4">
 </video>
 
-<!-- ✅ Login Screen -->
+<!-- LOGIN -->
 <div id="login-screen" class="screen">
   <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[440px] shadow-2xl mt-10 mb-10">
     <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
@@ -290,30 +335,28 @@ button.glow {
   </div>
 </div>
 
-<!-- ✅ Voting Screen -->
+<!-- VOTING -->
 <div id="voting-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-md rounded-3xl p-6 text-center shadow-2xl flex flex-col max-h-[90vh]">
     <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
     <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
     <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device.</p>
-
     <div id="performers-container" class="space-y-4 flex-1">
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Below</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Deliverance</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Mask Off</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Metro Motion</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Sin Games</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-white/50" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Anonymity</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Below</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Deliverance</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Mask Off</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Metro Motion</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Sin Games</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Anonymity</h4></div>
     </div>
-
     <button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40" disabled>Select a Performer to Vote</button>
   </div>
 </div>
 
-<!-- ✅ Confirmation Screen -->
+<!-- CONFIRMATION -->
 <div id="confirmation-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-sm rounded-3xl p-8 text-center shadow-2xl">
-    <h3 class="text-3xl font-bold mb-4 text-white">✅ Submission Recorded!</h3>
+    <h3 class="text-3xl font-bold mb-4 text-white">✅ Submission Received!</h3>
     <img id="confirmation-image" class="w-full max-w-[240px] mx-auto rounded-xl mb-6" alt="Team Image">
     <p id="confirmation-message" class="text-white text-base mb-6"></p>
   </div>
