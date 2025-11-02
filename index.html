@@ -37,6 +37,7 @@ let db, auth, userId;
 let visitorId = null;
 let selectedVoteId = null;
 let selectedVoteName = "";
+let selectedVoteImage = "";
 let appInitialized = false;
 let votingEnabled = true;
 
@@ -47,7 +48,7 @@ const geofences = [
   { minLat: 33.6786695, maxLat: 33.6789695, minLong: -112.256548, maxLong: -112.256248 }
 ];
 
-let locationError, locationButton, performersContainer, submitVoteButton, confirmationMessage;
+let locationError, locationButton, performersContainer, submitVoteButton, confirmationMessage, confirmationImage;
 
 /* 🔹 DOM Elements */
 document.addEventListener("DOMContentLoaded", () => {
@@ -56,6 +57,21 @@ document.addEventListener("DOMContentLoaded", () => {
   performersContainer = document.getElementById('performers-container');
   submitVoteButton = document.getElementById('submit-vote-btn');
   confirmationMessage = document.getElementById('confirmation-message');
+  confirmationImage = document.getElementById('confirmation-image');
+});
+
+/* ✅ Preload images so confirmation loads instantly */
+const performerImages = [
+  "https://i.imgur.com/DIyK2zX.jpeg",
+  "https://i.imgur.com/s7Unz9r.jpeg",
+  "https://i.imgur.com/x0BI8Mc.jpeg",
+  "https://i.imgur.com/4rG47gL.jpeg",
+  "https://i.imgur.com/k75mMUz.jpeg",
+  "https://i.imgur.com/3dJQFeX.jpeg"
+];
+performerImages.forEach(url => {
+  const img = new Image();
+  img.src = url;
 });
 
 function setScreen(id) {
@@ -69,21 +85,7 @@ function isInsideGeofence(lat, long) {
   );
 }
 
-function setLoading(isLoading, message = 'Verifying your location...') {
-  if (!locationButton) return;
-  locationButton.disabled = isLoading;
-  if (isLoading) {
-    locationButton.classList.remove("glow");
-    locationButton.innerHTML = '<div class="spinner mx-auto"></div>';
-    locationError.textContent = message;
-  } else {
-    locationButton.classList.add("glow");
-    locationButton.innerHTML = '<span>Begin Voting</span>';
-  }
-}
-
 function showError(msg) {
-  setLoading(false);
   if (!locationError) return;
   locationError.textContent = msg;
   locationError.classList.add('text-red-400', 'font-bold');
@@ -97,22 +99,12 @@ function handleCardSelection(e) {
   card.classList.add('selected');
   selectedVoteId = card.dataset.voteId;
   selectedVoteName = card.querySelector('h4').textContent;
+  selectedVoteImage = card.querySelector('img').src;
   submitVoteButton.disabled = false;
   submitVoteButton.textContent = `Submit Vote for ${selectedVoteName}`;
 }
 
-/* 🔸 Check for Existing Vote by Fingerprint */
-async function checkExistingVote() {
-  if (!visitorId) return false;
-  try {
-    const snap = await getDoc(doc(db, 'lip_sync_2025_votes', visitorId));
-    return snap.exists();
-  } catch {
-    return false;
-  }
-}
-
-/* 🔸 Submit Vote (fingerprint locked) */
+/* 🔸 Submit Vote */
 async function submitVote(voteId, btn) {
   if (!visitorId) return showError('Fingerprint not ready.');
   if (!votingEnabled) return showError('Voting is currently disabled.');
@@ -129,53 +121,32 @@ async function submitVote(voteId, btn) {
       userAgent: navigator.userAgent
     });
 
-    confirmationMessage.textContent = `Your vote for ${selectedVoteName} has been counted. Thanks for joining Lip Sync: For Good!`;
+    confirmationImage.src = selectedVoteImage;
+    confirmationMessage.innerHTML = `
+      Submission Received!<br><br>
+      Your vote for <b>${selectedVoteName}</b> has been received.<br><br>
+      Thank you for attending <b>Lip Sync: For Good!</b>
+    `;
     setScreen('confirmation-screen');
   } catch (e) {
     console.error(e);
     btn.disabled = false;
     btn.textContent = 'Vote Failed – Retry';
-    if (e?.code === 'permission-denied') {
-      showError('You have already voted.');
-      setScreen('confirmation-screen');
-    } else {
-      showError('Error saving vote.');
-    }
+    showError('Error saving vote.');
   }
 }
 
 /* 🔸 Location Check */
 async function handleLocationCheck() {
   if (!navigator.geolocation) return showError('Your device does not support location access.');
-  if (!votingEnabled) return showError('Voting is currently closed.');
-
-  setLoading(true, 'Checking your location…');
-
-  const alreadyVoted = await checkExistingVote();
-  if (alreadyVoted) {
-    setScreen('confirmation-screen');
-    showError('You have already voted.');
-    return;
-  }
 
   navigator.geolocation.getCurrentPosition(
     pos => {
       const { latitude, longitude } = pos.coords;
-      if (isInsideGeofence(latitude, longitude)) {
-        setLoading(false);
-        setScreen('voting-screen');
-      } else {
-        showError('You must be within the event area to vote.');
-      }
+      if (isInsideGeofence(latitude, longitude)) setScreen('voting-screen');
+      else showError('You must be within the event area to vote.');
     },
-    err => {
-      if (err.code === err.PERMISSION_DENIED) {
-        showError('Location access is required to vote. Please refresh and enable location access.');
-      } else {
-        showError('Unable to verify your location. Please refresh and try again.');
-      }
-    },
-    { timeout: 10000 }
+    err => showError('Location access is required to vote.')
   );
 }
 
@@ -185,10 +156,6 @@ function initApp() {
     .then(fp => fp.get())
     .then(r => {
       visitorId = r.visitorId;
-      if (locationError) {
-        locationError.textContent = 'Location access is required to vote.';
-        locationError.classList.remove('text-red-400');
-      }
       locationButton.disabled = false;
       locationButton.classList.add("glow");
     })
@@ -231,11 +198,9 @@ html, body {
   color: white;
   overflow: hidden;
   background-color: black;
-  -webkit-transform: translateZ(0);
-  will-change: transform;
 }
 
-/* ✅ Key fix: force iPhone to render the video layer */
+/* ✅ Background Video Layer Fix */
 #bg-video {
   position: fixed;
   top: 0;
@@ -244,13 +209,11 @@ html, body {
   height: 100vh;
   object-fit: cover;
   z-index: 0;
-  pointer-events: none;
   opacity: 0.8;
   background-color: black;
-  transform: translateZ(0);
 }
 
-/* ✅ Push all foreground content above video */
+/* ✅ Foreground Layer */
 .screen, .glass-card {
   position: relative;
   z-index: 1;
@@ -263,38 +226,28 @@ html, body {
   border-bottom-color: rgba(255,255,255,0.03);
   box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
-.spinner {
-  border:3px solid rgba(255,255,255,0.15);
-  border-top-color:#fff;
-  border-radius:50%;
-  width:22px;height:22px;
-  animation:spin .9s linear infinite;
-  display:block;
-  margin:0 auto;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
+
 @keyframes pink-green-glow {
   0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
   50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
   100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
 }
-.glow {
-  background-color: rgba(0,0,0,0.6);
+
+.glow, .glass-card.glow {
   animation: pink-green-glow 8s ease-in-out infinite;
 }
+
 .performer-card.selected {
   border: 2px solid white;
   animation: pink-green-glow 8s ease-in-out infinite;
 }
-#submit-vote-btn:hover {
-  border-color: #60A34D;
-  box-shadow: 0 0 10px 2px rgba(96,163,77,0.9);
-}
+
 #performers-container {
   overflow-y: auto;
   max-height: 60vh;
   padding-right: 4px;
 }
+
 .screen {
   position: fixed;
   inset: 0;
@@ -307,14 +260,14 @@ html, body {
 </head>
 
 <body>
-<!-- ✅ Proper autoplay setup for iOS -->
+<!-- ✅ Background Video -->
 <video autoplay muted playsinline loop preload="auto" id="bg-video">
   <source src="https://i.imgur.com/Aqrg8yc.mp4" type="video/mp4">
 </video>
 
-<!-- All your screens remain identical below -->
+<!-- ✅ Login Screen -->
 <div id="login-screen" class="screen">
-  <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[440px] shadow-2xl mt-10 mb-10">
+  <div class="glass-card glow flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[440px] shadow-2xl mt-10 mb-10">
     <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
     <p id="location-error" class="text-white/70 text-base mb-8 max-w-sm">Location access is required to vote.</p>
     <button id="location-btn" class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200 glow">Begin Voting</button>
@@ -325,7 +278,7 @@ html, body {
   </div>
 </div>
 
-<!-- Voting Screen -->
+<!-- ✅ Voting Screen -->
 <div id="voting-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-md rounded-3xl p-6 text-center shadow-2xl flex flex-col max-h-[90vh]">
     <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
@@ -345,11 +298,12 @@ html, body {
   </div>
 </div>
 
-<!-- Confirmation Screen -->
+<!-- ✅ Confirmation Screen -->
 <div id="confirmation-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-sm rounded-3xl p-8 text-center shadow-2xl">
-    <h3 class="text-3xl font-bold mb-4 text-white">✅ Vote Submitted!</h3>
-    <p id="confirmation-message" class="text-white text-base mb-6">Your vote has been counted. Thanks for joining Lip Sync: For Good!</p>
+    <h3 class="text-3xl font-bold mb-4 text-white">✅ Submission Received!</h3>
+    <img id="confirmation-image" class="w-full max-w-[240px] mx-auto rounded-xl mb-6" alt="Team Image">
+    <p id="confirmation-message" class="text-white text-base mb-6"></p>
   </div>
 </div>
 </body>
