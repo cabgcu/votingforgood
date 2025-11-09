@@ -259,10 +259,6 @@ function handleLocationCheck(){
       retry.classList.remove("hidden");
       if(err.code===1){
         showError("Location access is blocked. Go to Settings → Safari → Location → Allow or Ask Next Time.",'location');
-        setTimeout(()=>{
-          document.getElementById("location-mode").classList.add("hidden");
-          document.getElementById("student-id-mode").classList.remove("hidden");
-        },2500);
       }else{
         showError("Location access is needed to vote. Please refresh!");
       }
