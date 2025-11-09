@@ -44,7 +44,7 @@ button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
     <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Header">
 
     <div id="login-options" class="w-full">
-      <!-- Student ID is now default -->
+      <!-- Student ID default -->
       <div id="student-id-mode" class="w-full">
         <p id="student-id-error" class="text-white/70 text-base mb-8 max-w-sm">Enter your Student ID to vote.</p>
         <input type="number" id="student-id-input" placeholder="Enter Student ID" class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-4"/>
@@ -52,7 +52,7 @@ button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
         <a href="#" id="show-location-mode" class="block text-sm text-white/60 mt-4 underline">Can’t use Student ID? Vote with location instead.</a>
       </div>
 
-      <!-- Location mode (secondary) -->
+      <!-- Location mode -->
       <div id="location-mode" class="hidden w-full">
         <p id="location-error" class="text-white/70 text-base mb-8 max-w-sm">Location access is required to vote.</p>
         <button id="location-btn" class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200"><div class="spinner mx-auto"></div></button>
@@ -72,7 +72,7 @@ button.glow{animation:pink-green-glow 8s ease-in-out infinite;}
   <div class="glass-card w-11/12 max-w-md rounded-3xl p-4 text-center shadow-2xl flex flex-col max-h-[95vh]">
     <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
     <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
-    <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device.</p>
+    <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device or student ID.</p>
     <div id="performers-container" class="space-y-4 flex-1"></div>
     <button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40" disabled>Select a Performer to Vote</button>
   </div>
@@ -186,6 +186,17 @@ async function submitVote(voteId,btn){
       const fp=t.get(fRef);if((await fp).exists())throw new Error(`VOTED_ALREADY:${(await fp).data().voteId}`);
       t.set(vRef,data);t.set(fRef,{createdAt:data.createdAt,userId,voteId});
     });
+
+    // ✅ Mark Student ID as used after successful vote
+    if (authMethod === 'student_id' && verifiedStudentId) {
+      try {
+        const studentRef = doc(db, "student_ids", verifiedStudentId);
+        await setDoc(studentRef, { hasVoted: true }, { merge: true });
+      } catch (err) {
+        console.error("Error marking Student ID as voted:", err);
+      }
+    }
+
     document.getElementById("confirmation-image").src=selectedVoteImage;
     document.getElementById("confirmation-message").innerHTML=`Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
     setScreen("confirmation-screen");
