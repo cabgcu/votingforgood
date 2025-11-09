@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Lip Sync 2025 Voting</title>
 
 <meta name="theme-color" content="#000000">
@@ -47,7 +47,7 @@ body {
   z-index: 0; opacity: 0.8;
 }
 
-/* Screen structure */
+/* Screen layout */
 .screen {
   position: fixed;
   inset: 0;
@@ -58,12 +58,9 @@ body {
   transition: opacity .3s ease;
   z-index: 10;
 }
-.hidden {
-  opacity: 0 !important;
-  pointer-events: none;
-}
+.hidden { opacity: 0 !important; pointer-events: none; }
 
-/* Glass styling */
+/* Card styling */
 .glass-card {
   background: rgba(0,0,0,0.45);
   backdrop-filter: blur(20px);
@@ -74,7 +71,7 @@ body {
   overflow: hidden;
 }
 
-/* Glow animation */
+/* Glow */
 @keyframes pink-green-glow {
   0% { box-shadow: 0 0 10px 1px rgba(255,105,180,0.6); }
   50% { box-shadow: 0 0 18px 3px rgba(96,163,77,0.8); }
@@ -106,11 +103,18 @@ button.glow { animation: pink-green-glow 6s ease-in-out infinite; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Voting card only */
+/* Voting screen */
+#voting-screen { overflow: hidden; }
 #voting-screen .glass-card {
   max-height: 95vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+#submit-vote-btn {
+  touch-action: manipulation;
+  pointer-events: auto;
+  position: relative;
+  z-index: 5;
 }
 
 @media (max-height: 750px) {
@@ -130,6 +134,19 @@ button.glow { animation: pink-green-glow 6s ease-in-out infinite; }
 </head>
 
 <body>
+
+<!-- Zoom correction script -->
+<script>
+window.addEventListener("DOMContentLoaded", () => {
+  const scale = window.visualViewport?.scale || 1;
+  if (scale > 1.05) {
+    document.body.style.transform = `scale(${1/scale})`;
+    document.body.style.transformOrigin = "top center";
+    document.body.style.width = `${scale * 100}%`;
+  }
+});
+</script>
+
 <video autoplay muted playsinline loop preload="auto" id="bg-video" poster="https://i.imgur.com/EnuWGLA.png">
   <source src="https://i.imgur.com/mAzP2S1.mp4" type="video/mp4">
 </video>
@@ -285,6 +302,18 @@ function handleCardSelection(e){
 }
 
 async function submitVote(voteId,btn){
+  // Guard against zoomed browsers
+  if(window.visualViewport?.scale > 1.05){
+    alert("Please reset your browser zoom to default before voting.");
+    btn.disabled=false;return;
+  }
+
+  const rect=btn.getBoundingClientRect();
+  if(rect.bottom>window.innerHeight||rect.top<0){
+    alert("Please scroll to the bottom before submitting your vote.");
+    btn.disabled=false;return;
+  }
+
   if(!deviceHash||!userId)return;
   if(!votingEnabled){showError("Voting is closed!");return;}
   btn.disabled=true;btn.textContent="Submitting...";
