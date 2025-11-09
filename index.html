@@ -10,9 +10,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 
+<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- FingerprintJS -->
 <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs/dist/fp.min.js"></script>
 
+<!-- Firebase -->
 <script type="module">
 // Admin panel code (Google Auth, writeBatch, etc.) has been REMOVED.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -43,13 +46,13 @@ let votingEnabled = true;
 let authMethod = null; // 'location' or 'student_id'
 let verifiedStudentId = null; 
 
-/* ========= Performer Data ========= */
+/* ========= Performer Data (Sin Game Updated) ========= */
 const performerData = {
   option1: { name: "Below", img: "https://i.imgur.com/DIyK2zX.jpeg" },
   option2: { name: "Deliverance", img: "https://i.imgur.com/s7Unz9r.jpeg" },
   option3: { name: "Mask Off", img: "https://i.imgur.com/x0BI8Mc.jpeg" },
   option4: { name: "Metro Motion", img: "https://i.imgur.com/4rG47gL.jpeg" },
-  option5: { name: "Sin Games", img: "https://i.imgur.com/k75mMUz.jpeg" },
+  option5: { name: "Sin Game", img: "https://i.imgur.com/k75mMUz.jpeg" }, // <-- NAME UPDATED
   option6: { name: "Anonymity", img: "https://i.imgur.com/3dJQFeX.jpeg" },
 };
 
@@ -414,51 +417,67 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
   <source src="https://i.imgur.com/mAzP2S1.mp4" type="video/mp4">
 </video>
 
+<!-- ADMIN PANEL HTML HAS BEEN REMOVED -->
+
+<!-- LOGIN -->
+<!-- We start with the login screen visible. restoreVoteIfExists() will hide it if needed. -->
 <div id="login-screen" class="screen">
+  <!-- RESPONSIVENESS FIX: Removed min-h-[440px], added h-auto, max-h-[95vh] and overflow-y-auto for safety on small screens -->
   <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl h-auto max-h-[95vh] overflow-y-auto shadow-2xl my-4">
     <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
     
+    <!-- This is the container for all login options -->
     <div id="login-options" class="w-full">
 
+      <!-- Location Mode (Default) -->
       <div id="location-mode" class="w-full">
         <p id="location-error" class="text-white/70 text-base mb-8 max-w-sm">Location access is required to vote.</p>
         <button id="location-btn" class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200"><div class="spinner mx-auto"></div></button>
         <a href="#" id="show-id-mode" class="block text-sm text-white/60 mt-4 underline">Can't use location? Vote with Student ID.</a>
       </div>
 
+      <!-- Student ID Mode (Hidden by default) -->
       <div id="student-id-mode" class="hidden w-full">
         <p id="student-id-error" class="text-white/70 text-base mb-8 max-w-sm">Enter your Student ID to vote.</p>
         <input type="number" id="student-id-input" placeholder="Enter Student ID" class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-4" />
-        <button id="student-id-btn" class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200"><span>Verify ID</span></button>
+        <!-- ***** GLOW CLASS ADDED HERE ***** -->
+        <button id="student-id-btn" class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200"><span>Verify ID</span></button>
         <a href="#" id="show-location-mode" class="block text-sm text-white/60 mt-4 underline">Vote with location instead.</a>
       </div>
 
     </div>
     
     <footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
+      <!-- RELIABILITY FIX: Added onerror to hide if logo fails to load -->
       <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo" class="h-12 mb-3 object-contain" onerror="this.style.display='none'">
       <p>Follow Us At <b>@CABGCU</b> On Instagram</p>
     </footer>
   </div>
 </div>
 
+<!-- VOTING SCREEN -->
 <div id="voting-screen" class="screen hidden">
+  <!-- RESPONSIVENESS FIX: Changed max-h-[90vh] to max-h-[95vh] and p-4 for smaller screens -->
   <div class="glass-card w-11/12 max-w-md rounded-3xl p-4 text-center shadow-2xl flex flex-col max-h-[95vh]">
     <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
     <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
     <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device.</p>
+    <!-- RESPONSIVENESS FIX: This container is now flex-1 and will scroll perfectly within the parent card -->
     <div id="performers-container" class="space-y-4 flex-1">
+      <!-- RELIABILITY FIX: Added onerror to all performer images -->
       <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Below" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Below</h4></div>
       <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Deliverance" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Deliverance</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option3"><img src="httpsks://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Mask Off" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Mask Off</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Mask Off" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Mask Off</h4></div>
       <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Metro Motion" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Metro Motion</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Sin Games" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Sin Games</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Anonymity" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Anonymity</h4></div>
+      <!-- ***** NAME UPDATED HERE ***** -->
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Sin Game" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Sin Game</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option6"><img src="httpsD:/i.imgur.com/3dJQFeX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Anonymity" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Anonymity</h4></div>
     </div>
     <button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40" disabled>Select a Performer to Vote</button>
   </div>
 </div>
 
+<!-- CONFIRMATION -->
 <div id="confirmation-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-sm rounded-3xl p-8 text-center shadow-2xl">
     <h3 class="text-3xl font-bold mb-4 text-white">✅ Submission Received!</h3>
