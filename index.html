@@ -73,12 +73,19 @@ button.glow{animation:pink-green-glow 6s ease-in-out infinite;}
           No Student ID? Click Here!
         </a>
       </div>
+
+      <!-- LOCATION MODE -->
       <div id="location-mode" class="hidden">
-        <p id="location-error" class="text-white/70 text-base mb-6">Location access is required to vote.</p>
+        <p id="location-error" class="text-white/70 text-base mb-6">
+          Location access is required to vote. You can vote while inside the GCU Arena!
+        </p>
         <button id="location-btn"
           class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl
-          border border-white/50 shadow-lg transition mb-4">Begin Voting</button>
-        <button id="retry-location" class="text-sm text-white/70 underline mb-3 hidden">Try Again</button>
+          border border-white/50 shadow-lg transition mb-2">Begin Voting</button>
+        <a id="retry-location"
+           class="block text-sm text-white/70 underline mb-5 hover:text-white/90 hidden">
+           Try Again
+        </a>
         <a href="#" id="show-id-mode"
            class="block text-sm text-white/60 underline mt-2 mb-4 py-2 hover:text-white/90">
           Vote with Student ID instead.
@@ -286,9 +293,9 @@ async function initializeAppLogic(){
   document.getElementById("show-location-mode").addEventListener("click",e=>{e.preventDefault();
     document.getElementById("student-id-mode").classList.add("hidden");
     document.getElementById("location-mode").classList.remove("hidden");});
+  document.getElementById("retry-location").addEventListener("click",handleLocationCheck);
   document.getElementById("performers-container").addEventListener("click",handleCardSelection);
   document.getElementById("submit-vote-btn").addEventListener("click",()=>submitVote(selectedVoteId,document.getElementById("submit-vote-btn")));
-  document.getElementById("retry-location").addEventListener("click",handleLocationCheck);
 
   const sRef=doc(db,"lip_sync_2025_settings","state");
   onSnapshot(sRef,(s)=>{
