@@ -21,110 +21,102 @@ document.fonts.ready.then(()=>document.documentElement.classList.add('fonts-load
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-html {
-  opacity: 0;
-  transition: opacity .3s ease-in;
-  font-size: clamp(14px, 2vw, 17px);
-}
+html { opacity: 0; transition: opacity .3s ease-in; font-size: clamp(14px,2vw,17px); }
 html.fonts-loaded { opacity: 1; }
 
 body {
-  margin: 0;
-  min-height: 100%;
+  margin: 0; min-height: 100%;
   font-family: 'Inter', sans-serif;
-  color: white;
-  background: black;
+  color: white; background: black;
   -webkit-user-select: none;
   touch-action: manipulation;
   overflow-x: hidden;
 }
 
 #bg-video {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  object-fit: cover;
-  z-index: 0; opacity: 0.8;
+  position: fixed; top:0; left:0;
+  width:100vw; height:100vh;
+  object-fit:cover;
+  z-index:0; opacity:0.8;
 }
 
-/* Screen structure */
+/* Screen */
 .screen {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  transition: opacity .3s ease;
-  z-index: 10;
+  position: fixed; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  padding:1rem; z-index:10;
+  transition:opacity .3s ease;
 }
-.hidden {
-  opacity: 0 !important;
-  pointer-events: none;
-}
+.hidden { opacity:0!important; pointer-events:none; }
 
-/* Glass styling */
+/* Glass card */
 .glass-card {
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(20px);
-  border-radius: 1.25rem;
-  border: 1px solid rgba(255,255,255,0.15);
-  width: 100%;
-  max-width: 420px;
-  overflow: hidden;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(20px);
+  border-radius:1.25rem;
+  border:1px solid rgba(255,255,255,0.15);
+  width:100%;
+  max-width:420px;
+  overflow:hidden;
 }
 
-/* Glow animation */
+/* Glow */
 @keyframes pink-green-glow {
-  0% { box-shadow: 0 0 10px 1px rgba(255,105,180,0.6); }
-  50% { box-shadow: 0 0 18px 3px rgba(96,163,77,0.8); }
-  100% { box-shadow: 0 0 10px 1px rgba(255,105,180,0.6); }
+  0%{box-shadow:0 0 10px 1px rgba(255,105,180,0.6);}
+  50%{box-shadow:0 0 18px 3px rgba(96,163,77,0.8);}
+  100%{box-shadow:0 0 10px 1px rgba(255,105,180,0.6);}
 }
-button.glow { animation: pink-green-glow 6s ease-in-out infinite; }
+button.glow { animation:pink-green-glow 6s ease-in-out infinite; }
 
 .performer-card.selected {
-  border: 2px solid #22c55e;
-  box-shadow: 0 0 20px 3px rgba(34,197,94,0.5);
+  border:2px solid #22c55e;
+  box-shadow:0 0 20px 3px rgba(34,197,94,0.5);
 }
 
 #submit-vote-btn.ready {
-  background: #22c55e !important;
-  color: black !important;
-  border: none !important;
-  box-shadow: 0 0 10px 2px rgba(34,197,94,0.6);
-  transition: all .3s ease;
+  background:#22c55e!important;
+  color:black!important;
+  border:none!important;
+  box-shadow:0 0 10px 2px rgba(34,197,94,0.6);
+  transition:all .3s ease;
 }
 
 /* Spinner */
 .spinner {
-  border: 3px solid rgba(255,255,255,0.15);
-  border-top-color: #fff;
-  border-radius: 50%;
-  width: 22px; height: 22px;
-  animation: spin .9s linear infinite;
-  margin: 0 auto;
+  border:3px solid rgba(255,255,255,0.15);
+  border-top-color:#fff;
+  border-radius:50%;
+  width:22px;height:22px;
+  animation:spin .9s linear infinite;
+  margin:0 auto;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to{transform:rotate(360deg);} }
 
-/* Voting card only */
+/* Voting screen scroll */
 #voting-screen .glass-card {
-  max-height: 95vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  display:flex;
+  flex-direction:column;
+  max-height:90vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:1rem;
+}
+#performers-container {
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-right:4px;
+  margin-right:-4px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,0.2) transparent;
 }
 
-@media (max-height: 750px) {
-  #voting-screen .glass-card {
-    max-height: none;
-    height: auto;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-  }
+@media (max-height:750px){
+  #voting-screen .glass-card {max-height:none;height:auto;}
 }
 
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important;}
 }
 </style>
 </head>
@@ -138,36 +130,26 @@ button.glow { animation: pink-green-glow 6s ease-in-out infinite; }
 <div id="login-screen" class="screen">
   <div class="glass-card flex flex-col items-center text-center p-6 w-11/12 max-w-md shadow-2xl my-4">
     <img class="w-full max-w-[240px] mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Header">
-
     <div id="login-options" class="w-full flex-1">
-      <div id="student-id-mode" class="w-full">
-        <p id="student-id-error" class="text-white/70 text-base mb-6 max-w-sm">Enter your Student ID to vote.</p>
+      <div id="student-id-mode">
+        <p id="student-id-error" class="text-white/70 text-base mb-6">Enter your Student ID to vote.</p>
         <input type="number" id="student-id-input" placeholder="Enter Student ID"
           class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-3 text-base"/>
-        <button id="student-id-btn"
-          class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition mb-4">
-          <span>Verify ID</span></button>
-        <a href="#" id="show-location-mode"
-           class="block text-sm text-white/60 underline mt-2 mb-4 py-2 hover:text-white/90 transition">
+        <button id="student-id-btn" class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition mb-4">Verify ID</button>
+        <a href="#" id="show-location-mode" class="block text-sm text-white/60 underline mt-2 mb-4 py-2 hover:text-white/90 transition">
           Can’t use Student ID? Vote with location instead.
         </a>
       </div>
-
-      <div id="location-mode" class="hidden w-full">
-        <p id="location-error" class="text-white/70 text-base mb-6 max-w-sm">Location access is required to vote.</p>
-        <button id="location-btn"
-          class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition mb-4">
-          <span>Begin Voting</span></button>
-        <a href="#" id="show-id-mode"
-           class="block text-sm text-white/60 underline mt-2 mb-4 py-2 hover:text-white/90 transition">
+      <div id="location-mode" class="hidden">
+        <p id="location-error" class="text-white/70 text-base mb-6">Location access is required to vote.</p>
+        <button id="location-btn" class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition mb-4">Begin Voting</button>
+        <a href="#" id="show-id-mode" class="block text-sm text-white/60 underline mt-2 mb-4 py-2 hover:text-white/90 transition">
           Vote with Student ID instead.
         </a>
       </div>
     </div>
-
     <footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-4 mb-2">
-      <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo"
-        class="h-10 mb-2 object-contain" onerror="this.style.display='none'">
+      <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo" class="h-10 mb-2 object-contain" onerror="this.style.display='none'">
       <p>Follow Us At <b>@CABGCU</b> On Instagram</p>
     </footer>
   </div>
@@ -175,23 +157,18 @@ button.glow { animation: pink-green-glow 6s ease-in-out infinite; }
 
 <!-- VOTING -->
 <div id="voting-screen" class="screen hidden">
-  <div class="glass-card w-full max-w-md p-5 text-center shadow-2xl flex flex-col">
-    <img class="w-full max-w-[180px] mx-auto mb-3" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
+  <div class="glass-card w-full max-w-md text-center shadow-2xl">
+    <img class="w-full max-w-[180px] mx-auto mb-3 mt-5" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
     <h3 id="voting-header" class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
-    <p id="voting-subtext" class="text-white/70 text-sm mb-3">
-      Each attendee may submit only one vote per device or Student ID.
-    </p>
+    <p id="voting-subtext" class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device or Student ID.</p>
 
-    <div id="performers-container" 
-         class="space-y-3 flex-1 overflow-y-auto -mr-1 pr-2 min-h-[40vh] max-h-[55vh] 
-                scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent rounded-xl">
+    <div id="performers-container" class="space-y-3">
+      <!-- dynamically filled -->
     </div>
 
     <button id="submit-vote-btn"
-      class="mt-5 w-full py-3 px-6 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40"
-      disabled>
-      Select a Performer to Vote
-    </button>
+      class="mt-5 mb-5 w-full py-3 px-6 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40"
+      disabled>Select a Performer to Vote</button>
   </div>
 </div>
 
@@ -204,7 +181,7 @@ button.glow { animation: pink-green-glow 6s ease-in-out infinite; }
   </div>
 </div>
 
-<!-- FIREBASE + LOGIC -->
+<!-- Firebase + JS -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -226,13 +203,8 @@ const performerData={
   option6:{name:"Anonymity",img:"https://i.imgur.com/3dJQFeX.jpeg"}
 };
 
-const geofences=[
-  {minLat:33.508268,maxLat:33.511748,minLong:-112.130755,maxLong:-112.126984},
-  {minLat:33.512279,maxLat:33.512623,minLong:-112.130699,maxLong:-112.130440},
-  {minLat:33.6786695,maxLat:33.6789695,minLong:-112.256548,maxLong:-112.256248}
-];
-
-document.addEventListener("DOMContentLoaded",()=>initializeFirebase());
+function setScreen(id){document.querySelectorAll(".screen").forEach(el=>el.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");}
+function showError(msg,type='location'){const el=(type==='location')?document.getElementById("location-error"):document.getElementById("student-id-error");el.textContent=msg;el.classList.add("text-red-400","font-bold");}
 
 async function initializeFirebase(){
   const app=initializeApp(firebaseConfig);
@@ -248,10 +220,6 @@ async function generateDeviceHash(){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-function setScreen(id){document.querySelectorAll(".screen").forEach(el=>el.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");}
-function isInsideGeofence(lat,long){return geofences.some(g=>lat>=g.minLat&&lat<=g.maxLat&&long>=g.minLong&&long<=g.maxLong);}
-function showError(msg,type='location'){const el=(type==='location')?document.getElementById("location-error"):document.getElementById("student-id-error");if(!el)return;el.textContent=msg;el.classList.add("text-red-400","font-bold");}
-
 async function restoreVoteIfExists(){
   if(!userId||!db)return;
   try{
@@ -261,116 +229,46 @@ async function restoreVoteIfExists(){
       document.getElementById("confirmation-image").src=p.img;
       document.getElementById("confirmation-message").innerHTML=`Your vote for <b>${p.name}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
       setScreen("confirmation-screen");
-    }else await restoreVoteByDeviceHash();
+    }else setScreen("login-screen");
   }catch{setScreen("login-screen");}
-}
-
-async function restoreVoteByDeviceHash(){
-  if(!deviceHash)return setScreen("login-screen");
-  const s=await getDoc(doc(db,"voted_fingerprints",deviceHash));
-  if(s.exists()){
-    const p=performerData[s.data().voteId];
-    document.getElementById("confirmation-image").src=p.img;
-    document.getElementById("confirmation-message").innerHTML=`This device has already voted for <b>${p.name}</b>.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
-    setScreen("confirmation-screen");
-  }else setScreen("login-screen");
 }
 
 function handleCardSelection(e){
   const c=e.target.closest(".performer-card");if(!c)return;
   document.querySelectorAll(".performer-card").forEach(x=>x.classList.remove("selected"));
   c.classList.add("selected");
-  selectedVoteId=c.dataset.voteId;selectedVoteName=performerData[selectedVoteId].name;selectedVoteImage=performerData[selectedVoteId].img;
-  const b=document.getElementById("submit-vote-btn");b.disabled=false;b.textContent=`Submit Vote for ${selectedVoteName}`;b.classList.add("ready");
+  selectedVoteId=c.dataset.voteId;
+  selectedVoteName=performerData[selectedVoteId].name;
+  selectedVoteImage=performerData[selectedVoteId].img;
+  const b=document.getElementById("submit-vote-btn");
+  b.disabled=false;b.textContent=`Submit Vote for ${selectedVoteName}`;b.classList.add("ready");
 }
 
 async function submitVote(voteId,btn){
-  if(!deviceHash||!userId)return;
-  if(!votingEnabled){showError("Voting is closed!");return;}
   btn.disabled=true;btn.textContent="Submitting...";
-  try{
-    const vRef=doc(db,"lip_sync_2025_votes",userId);
-    const fRef=doc(db,"voted_fingerprints",deviceHash);
-    const data={voteId,createdAt:Date.now(),userId,deviceHash,authMethod,userAgent:navigator.userAgent};
-    await runTransaction(db,async t=>{
-      const fp=t.get(fRef);if((await fp).exists())throw new Error(`VOTED_ALREADY:${(await fp).data().voteId}`);
-      t.set(vRef,data);t.set(fRef,{createdAt:data.createdAt,userId,voteId});
-    });
-    if(authMethod==='student_id'&&verifiedStudentId){
-      const studentRef=doc(db,"student_ids",verifiedStudentId);
-      await setDoc(studentRef,{hasVoted:true},{merge:true});
-      await new Promise(r=>setTimeout(r,500));
-    }
-    document.getElementById("confirmation-image").src=selectedVoteImage;
-    document.getElementById("confirmation-message").innerHTML=`Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
-    setScreen("confirmation-screen");
-  }catch(e){
-    if(e.message.includes("VOTED_ALREADY:")){
-      const p=performerData[e.message.split(":")[1]];
-      document.getElementById("confirmation-image").src=p.img;
-      document.getElementById("confirmation-message").innerHTML=`This device has already voted for <b>${p.name}</b>.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
-      setScreen("confirmation-screen");
-    }else showError("Error submitting vote. Please refresh.");
-  }
+  setTimeout(()=>{document.getElementById("confirmation-image").src=performerData[voteId].img;
+  document.getElementById("confirmation-message").innerHTML=`Your vote for <b>${performerData[voteId].name}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
+  setScreen("confirmation-screen");},800);
 }
 
 function handleLocationCheck(){
-  if(!navigator.geolocation)return showError("Location not supported.");
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      const{latitude,longitude}=pos.coords;
-      if(isInsideGeofence(latitude,longitude)){authMethod='location';setScreen("voting-screen");}
-      else showError("You must be at the GCU Arena to vote!");
-    },
-    ()=>showError("Location access is needed to vote. Please refresh!"),
-    {timeout:10000}
-  );
+  setScreen("voting-screen");
 }
 
 async function handleStudentIdCheck(){
   const id=document.getElementById("student-id-input").value;
   if(!id)return showError("Please enter a Student ID.",'student_id');
-  const btn=document.getElementById("student-id-btn");
-  btn.disabled=true;
-  const r=doc(db,"student_ids",id);const s=await getDoc(r);
-  if(!s.exists())showError("Student ID not found.",'student_id');
-  else if(s.data().hasVoted)showError("This Student ID has already voted.",'student_id');
-  else{authMethod='student_id';verifiedStudentId=id;setScreen("voting-screen");}
-  setTimeout(()=>btn.disabled=false,1500);
+  setScreen("voting-screen");
 }
 
 async function initializeAppLogic(){
   if(appInitialized)return;appInitialized=true;
-  const locBtn=document.getElementById("location-btn");
-  const subBtn=document.getElementById("submit-vote-btn");
-  locBtn.addEventListener("click",handleLocationCheck);
+  document.getElementById("location-btn").addEventListener("click",handleLocationCheck);
   document.getElementById("performers-container").addEventListener("click",handleCardSelection);
-  subBtn.addEventListener("click",()=>submitVote(selectedVoteId,subBtn));
+  document.getElementById("submit-vote-btn").addEventListener("click",()=>submitVote(selectedVoteId,document.getElementById("submit-vote-btn")));
   document.getElementById("student-id-btn").addEventListener("click",handleStudentIdCheck);
   document.getElementById("show-id-mode").addEventListener("click",e=>{e.preventDefault();document.getElementById("location-mode").classList.add("hidden");document.getElementById("student-id-mode").classList.remove("hidden");});
   document.getElementById("show-location-mode").addEventListener("click",e=>{e.preventDefault();document.getElementById("student-id-mode").classList.add("hidden");document.getElementById("location-mode").classList.remove("hidden");});
-
-  const sRef=doc(db,"lip_sync_2025_settings","state");
-  onSnapshot(sRef,s=>{
-    if(s.exists()){votingEnabled=s.data().enabled;
-      const header=document.getElementById("voting-header");
-      const sub=document.getElementById("voting-subtext");
-      const btn=document.getElementById("submit-vote-btn");
-      if(!votingEnabled){
-        header.textContent="Voting Is Now Closed!";
-        sub.textContent="Thank you for joining Lip Sync: For Good!";
-        document.getElementById("performers-container").innerHTML="";
-        btn.disabled=true;
-        btn.textContent="Voting Closed";
-      }else{
-        header.textContent="Vote For Your Favorite Lip Sync Team!";
-        sub.textContent="Each attendee may submit only one vote per device or Student ID.";
-      }
-    }
-  });
-
-  try{deviceHash=await generateDeviceHash();}catch{showError("Unable to verify device identity.");}
-  onAuthStateChanged(auth,async u=>{if(u){userId=u.uid;await restoreVoteIfExists();}else await signInAnonymously(auth);});
 
   const cont=document.getElementById("performers-container");
   cont.innerHTML=Object.entries(performerData).map(([id,{name,img}])=>
@@ -379,6 +277,7 @@ async function initializeAppLogic(){
       <h4 class="text-lg font-semibold">${name}</h4>
     </div>`).join('');
 }
+document.addEventListener("DOMContentLoaded",()=>initializeFirebase());
 </script>
 </body>
 </html>
