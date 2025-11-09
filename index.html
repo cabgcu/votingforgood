@@ -1,31 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Lip Sync 2025 Voting (Arena)</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Lip Sync 2025 Voting</title>
 
-<meta name="theme-color" content="#000000" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 
-<!-- Tailwind for layout -->
+<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- FingerprintJS -->
 <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs/dist/fp.min.js"></script>
 
 <!-- Firebase -->
 <script type="module">
+// Admin panel code (Google Auth, writeBatch, etc.) has been REMOVED.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import {
-  getAuth, signInAnonymously, onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import {
-  getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, onSnapshot
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import {
-  initializeAppCheck, ReCaptchaV3Provider
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
 
 /* ========= Firebase Config ========= */
 const firebaseConfig = {
@@ -44,193 +40,375 @@ let visitorId = null;
 let selectedVoteId = null;
 let selectedVoteName = "";
 let selectedVoteImage = "";
+let appInitialized = false;
 let votingEnabled = true;
-let isInsideArena = false;
+// Globals for Student ID voting
+let authMethod = null; // 'location' or 'student_id'
+let verifiedStudentId = null; 
 
-/* ========= GCU Arena Geofence ========= */
-const GEOFENCES = [
-  { minLat: 33.508268, maxLat: 33.511748, minLong: -112.130755, maxLong: -112.126984 },
-  { minLat: 33.512279, maxLat: 33.512623, minLong: -112.130699, maxLong: -112.130440 }
-];
-function isInside(lat, lng) {
-  return GEOFENCES.some(g =>
-    lat >= g.minLat && lat <= g.maxLat &&
-    lng >= g.minLong && lng <= g.maxLong
-  );
-}
-
-/* ========= Performer Data ========= */
+/* ========= Performer Data (Sin Game Updated) ========= */
 const performerData = {
   option1: { name: "Below", img: "https://i.imgur.com/DIyK2zX.jpeg" },
   option2: { name: "Deliverance", img: "https://i.imgur.com/s7Unz9r.jpeg" },
   option3: { name: "Mask Off", img: "https://i.imgur.com/x0BI8Mc.jpeg" },
   option4: { name: "Metro Motion", img: "https://i.imgur.com/4rG47gL.jpeg" },
-  option5: { name: "Sin Game", img: "https://i.imgur.com/k75mMUz.jpeg" },
+  option5: { name: "Sin Game", img: "https://i.imgur.com/k75mMUz.jpeg" }, // <-- NAME UPDATED
   option6: { name: "Anonymity", img: "https://i.imgur.com/3dJQFeX.jpeg" },
 };
 
-/* ========= DOM Ready ========= */
-document.addEventListener("DOMContentLoaded", async () => {
-  const app = initializeApp(firebaseConfig);
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
-    isTokenAutoRefreshEnabled: true
-  });
-  db = getFirestore(app);
-  auth = getAuth(app);
+/* ========= Geofences ========= */
+const geofences = [
+  { minLat: 33.508268, maxLat: 33.511748, minLong: -112.130755, maxLong: -112.126984 },
+  { minLat: 33.512279, maxLat: 33.512623, minLong: -112.130699, maxLong: -112.130440 },
+  { minLat: 33.6786695, maxLat: 33.6789695, minLong: -112.256548, maxLong: -112.256248 }
+];
 
-  const beginBtn = document.getElementById("begin-vote-btn");
-  const performersContainer = document.getElementById("performers-container");
-  const submitVoteButton = document.getElementById("submit-vote-btn");
-  const confirmationMessage = document.getElementById("confirmation-message");
-  const confirmationImage = document.getElementById("confirmation-image");
-  const geoStatus = document.getElementById("geo-status");
+/* ========= DOM Elements ========= */
+let locationError, locationButton, performersContainer, submitVoteButton, confirmationMessage, confirmationImage;
+let studentIdError, studentIdInput, studentIdButton, showIdMode, showLocationMode;
 
-  // FingerprintJS load
-  FingerprintJS.load()
-    .then(fp => fp.get())
-    .then(r => { visitorId = r.visitorId; })
-    .catch(() => console.warn("Fingerprint load failed."));
+document.addEventListener("DOMContentLoaded", () => {
+  // --- This function runs once the HTML is fully loaded ---
+  
+  // 1. Assign all DOM elements
+  locationError = document.getElementById("location-error");
+  locationButton = document.getElementById("location-btn");
+  performersContainer = document.getElementById("performers-container");
+  submitVoteButton = document.getElementById("submit-vote-btn");
+  confirmationMessage = document.getElementById("confirmation-message");
+  confirmationImage = document.getElementById("confirmation-image");
+  
+  studentIdError = document.getElementById("student-id-error");
+  studentIdInput = document.getElementById("student-id-input");
+  studentIdButton = document.getElementById("student-id-btn");
+  showIdMode = document.getElementById("show-id-mode");
+  showLocationMode = document.getElementById("show-location-mode");
 
-  // Firebase Auth
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      userId = user.uid;
-      restoreVoteIfExists();
-    } else {
-      await signInAnonymously(auth);
-    }
-  });
+  // 2. Initialize Firebase
+  try {
+    const app = initializeApp(firebaseConfig);
+    const appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
+      isTokenAutoRefreshEnabled: true
+    });
+    
+    db = getFirestore(app);
+    auth = getAuth(app);
 
-  // Listen for voting enabled/disabled
-  const settingsRef = doc(db, "lip_sync_2025_settings", "state");
-  onSnapshot(settingsRef, (snap) => {
-    if (snap.exists()) votingEnabled = snap.data().enabled;
-  });
+    // 3. Start authentication & app logic
+    initializeAppLogic();
 
-  // Begin Voting -> get location
-  beginBtn.addEventListener("click", () => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        if (isInside(latitude, longitude)) {
-          isInsideArena = true;
-          geoStatus.textContent = "Location verified! You are at the GCU Arena.";
-          document.getElementById("login-screen").classList.add("hidden");
-          document.getElementById("voting-screen").classList.remove("hidden");
-        } else {
-          geoStatus.textContent = "You must be at the GCU Arena to vote!";
-        }
-      },
-      () => { geoStatus.textContent = "Location access is required to vote. Please refresh and allow."; },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  });
-
-  // Select Performer
-  performersContainer.addEventListener("click", (e) => {
-    const card = e.target.closest(".performer-card");
-    if (!card || !votingEnabled) return;
-    document.querySelectorAll(".performer-card").forEach(c => c.classList.remove("selected"));
-    card.classList.add("selected");
-    selectedVoteId = card.dataset.voteId;
-    selectedVoteName = card.querySelector("h4").textContent;
-    selectedVoteImage = card.querySelector("img").src;
-    submitVoteButton.disabled = false;
-    submitVoteButton.textContent = `Submit Vote for ${selectedVoteName}`;
-    submitVoteButton.classList.add("ready");
-  });
-
-  submitVoteButton.addEventListener("click", () =>
-    submitVote(selectedVoteId, submitVoteButton, confirmationMessage, confirmationImage)
-  );
+  } catch (e) {
+    console.error("Firebase initialization failed:", e);
+    document.body.innerHTML = "<h1>Error: Could not initialize app. Please contact support.</h1>";
+  }
 });
 
-/* ========= Restore Vote ========= */
-async function restoreVoteIfExists() {
-  const snap = await getDoc(doc(db, "lip_sync_2025_votes", userId));
-  if (snap.exists()) {
-    const { voteId } = snap.data();
-    const performer = performerData[voteId];
-    if (performer) {
-      document.getElementById("confirmation-image").src = performer.img;
-      document.getElementById("confirmation-message").innerHTML = `
-        You already voted for <b>${performer.name}</b>.<br><br>
-        Thank you for participating in <b>Lip Sync: For Good!</b>
-      `;
-      setScreen("confirmation-screen");
-    }
-  }
-}
-
-/* ========= Helper ========= */
+/* ========= Helper Functions ========= */
 function setScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
+  document.querySelectorAll(".screen").forEach(el => el.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
 }
 
-/* ========= Submit Vote (Geo + Fingerprint) ========= */
-async function submitVote(voteId, btn, confirmationMessage, confirmationImage) {
-  if (!visitorId) return alert("Fingerprint not ready.");
-  if (!isInsideArena) return alert("You must be at the GCU Arena to vote!");
-  if (!votingEnabled) return alert("Voting is currently disabled.");
-  if (!userId) return alert("User not authenticated.");
+function isInsideGeofence(lat, long) {
+  return geofences.some(({ minLat, maxLat, minLong, maxLong }) =>
+    lat >= minLat && lat <= maxLat && long >= minLong && long <= maxLong
+  );
+}
+
+function setLoading(isLoading, message = "Verifying your location...") {
+  if (!locationButton) return;
+  locationButton.disabled = isLoading;
+  if (isLoading) {
+    locationButton.innerHTML = '<div class="spinner mx-auto"></div>';
+    locationError.textContent = message;
+    locationError.classList.remove("text-red-400", "font-bold");
+  } else {
+    locationButton.innerHTML = "<span>Begin Voting</span>";
+  }
+}
+
+function showError(msg, method = 'location') {
+  setLoading(false); 
+  setStudentIdLoading(false); 
+  const el = (method === 'location') ? locationError : studentIdError;
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("text-red-400", "font-bold");
+}
+
+function setStudentIdLoading(isLoading, message = "Verifying your ID...") {
+  if (!studentIdButton) return;
+  studentIdButton.disabled = isLoading;
+  if (isLoading) {
+    studentIdButton.innerHTML = '<div class="spinner mx-auto"></div>';
+    studentIdError.textContent = message;
+    studentIdError.classList.remove("text-red-400", "font-bold");
+  } else {
+    studentIdButton.innerHTML = "<span>Verify ID</span>";
+  }
+}
+
+/* ========= Restore Vote If Exists ========= */
+async function restoreVoteIfExists() {
+  if (!userId || !db) return;
+  
+  try {
+    const snap = await getDoc(doc(db, "lip_sync_2025_votes", userId));
+    if (snap.exists()) {
+      const { voteId } = snap.data();
+      if (performerData[voteId]) {
+        const performer = performerData[voteId];
+        confirmationImage.src = performer.img;
+        // Add onerror handler for confirmation image
+        confirmationImage.onerror = () => { confirmationImage.style.display = 'none'; };
+        confirmationMessage.innerHTML = `
+          Your vote for <b>${performer.name}</b> has been recorded.<br><br>
+          Thank you for attending <b>Lip Sync: For Good!</b>
+        `;
+        setScreen("confirmation-screen");
+      }
+    } else {
+        // No vote found, show the login screen
+        setScreen("login-screen");
+    }
+  } catch (e) {
+      console.error("Error restoring vote:", e);
+      setScreen("login-screen"); // Fallback
+  }
+}
+
+/* ========= Card Selection ========= */
+function handleCardSelection(e) {
+  const card = e.target.closest(".performer-card");
+  if (!card || !votingEnabled) return;
+  document.querySelectorAll(".performer-card").forEach(c => c.classList.remove("selected"));
+  card.classList.add("selected");
+  selectedVoteId = card.dataset.voteId;
+  selectedVoteName = card.querySelector("h4").textContent;
+  selectedVoteImage = card.querySelector("img").src;
+
+  submitVoteButton.disabled = false;
+  submitVoteButton.textContent = `Submit Vote for ${selectedVoteName}`;
+  submitVoteButton.classList.add("ready");
+}
+
+/* ========= Submit Vote ========= */
+async function submitVote(voteId, btn) {
+  if (!visitorId) return showError("Fingerprint not ready.");
+  if (!votingEnabled) return showError("Voting is currently disabled.");
+  if (!userId) return showError("User not authenticated.");
 
   btn.disabled = true;
   btn.textContent = "Submitting...";
 
   try {
-    // 🔒 Duplicate check by fingerprint
-    const fingerprintQuery = query(
-      collection(db, "lip_sync_2025_votes"),
-      where("fingerprint", "==", visitorId)
-    );
-    const fingerprintSnap = await getDocs(fingerprintQuery);
-    if (!fingerprintSnap.empty) {
-      confirmationImage.style.display = "none";
-      confirmationMessage.innerHTML = `
-        You’ve already voted on this device.<br><br>
-        Thank you for participating in <b>Lip Sync: For Good!</b>
-      `;
-      setScreen("confirmation-screen");
-      return;
-    }
-
-    // ✅ Save new vote
+    // The document ID is the 'userId' to enforce one-vote-per-device-session
     const voteRef = doc(db, "lip_sync_2025_votes", userId);
-    await setDoc(voteRef, {
+    
+    const voteData = {
       voteId,
       createdAt: Date.now(),
       userId,
-      fingerprint: visitorId,
+      fingerprint: visitorId, // We still save the fingerprint for records
       userAgent: navigator.userAgent,
-      voteSource: "arena"
-    });
+      authMethod: authMethod // Store how they voted
+    };
 
-    confirmationImage.src = performerData[voteId].img;
+    if (authMethod === 'student_id') {
+      // --- STUDENT ID VOTE (uses a Transaction) ---
+      voteData.studentId = verifiedStudentId; 
+      const studentIdRef = doc(db, "student_ids", verifiedStudentId);
+
+      await runTransaction(db, async (transaction) => {
+        const idDoc = await transaction.get(studentIdRef);
+        if (!idDoc.exists()) throw new Error("Student ID not found.");
+        if (idDoc.data().hasVoted) throw new Error("This ID has already voted.");
+        transaction.set(voteRef, voteData);
+        transaction.update(studentIdRef, { hasVoted: true });
+      });
+
+    } else {
+      // --- LOCATION VOTE (no transaction needed) ---
+      await setDoc(voteRef, voteData);
+    }
+
+    // --- Show Confirmation (same for both) ---
+    confirmationImage.src = selectedVoteImage;
+    // Add onerror handler for confirmation image
+    confirmationImage.onerror = () => { confirmationImage.style.display = 'none'; };
     confirmationMessage.innerHTML = `
-      Your vote for <b>${performerData[voteId].name}</b> has been recorded.<br><br>
-      Thank you for joining us live at <b>Lip Sync: For Good!</b>
+      Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>
+      Thank you for attending <b>Lip Sync: For Good!</b>
     `;
     setScreen("confirmation-screen");
+
   } catch (e) {
-    console.error(e);
     btn.disabled = false;
     btn.textContent = "Vote Failed – Retry";
-    alert("Error saving vote: " + e.message);
+    if (e.message.includes("already voted")) {
+        showError("This Student ID has already been used to vote.", 'student_id');
+    } else {
+        showError("Error saving vote: " + e.message, authMethod);
+    }
+    console.error("Submit Vote Error:", e);
   }
+}
+
+/* ========= Location Check ========= */
+async function handleLocationCheck() {
+  if (!navigator.geolocation) return showError("Your device does not support location access.", 'location');
+  if (!votingEnabled) return showError("Voting is currently closed.", 'location');
+
+  setLoading(true, "Checking your location…");
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude, longitude } = pos.coords;
+      if (isInsideGeofence(latitude, longitude)) {
+        setLoading(false);
+        authMethod = 'location'; // Set auth method
+        setScreen("voting-screen");
+      } else {
+        showError("You must be at the GCU Arena to vote!", 'location');
+      }
+    },
+    err => showError("Location Access Is Needed To Vote, Please Refresh!", 'location'),
+    { timeout: 10000 }
+  );
+}
+
+/* ========= Student ID Check ========= */
+async function handleStudentIdCheck() {
+  if (!votingEnabled) return showError("Voting is currently closed.", 'student_id');
+  
+  const id = studentIdInput.value;
+  if (!id) return showError("Please enter a Student ID.", 'student_id');
+
+  setStudentIdLoading(true);
+
+  try {
+    const studentIdRef = doc(db, "student_ids", id);
+    const docSnap = await getDoc(studentIdRef);
+
+    if (!docSnap.exists()) {
+      return showError("Student ID not found.", 'student_id');
+    }
+
+    if (docSnap.data().hasVoted) {
+      return showError("This Student ID has already been used to vote.", 'student_id');
+    }
+
+    // Success!
+    authMethod = 'student_id';
+    verifiedStudentId = id; // Store the valid ID
+    setStudentIdLoading(false);
+    setScreen("voting-screen");
+
+  } catch (e) {
+    console.error("Error checking ID: ", e);
+    showError("Error verifying ID. Please try again.", 'student_id');
+  }
+}
+
+/* ========= Main App Initialization Logic (CLEANED) ========= */
+function initializeAppLogic() {
+  if (appInitialized) return;
+  appInitialized = true;
+
+  console.log("Initializing App Logic...");
+
+  // Start FingerprintJS
+  FingerprintJS.load()
+    .then(fp => fp.get())
+    .then(r => {
+      visitorId = r.visitorId;
+      if (locationButton) {
+          locationButton.disabled = false;
+          locationButton.classList.add("glow");
+          locationButton.innerHTML = "<span>Begin Voting</span>";
+      }
+    })
+    .catch(() => showError("Unable to verify identity. Please refresh."));
+
+  // Attach all voting app listeners
+  locationButton.addEventListener("click", handleLocationCheck);
+  performersContainer.addEventListener("click", handleCardSelection);
+  submitVoteButton.addEventListener("click", () => submitVote(selectedVoteId, submitVoteButton));
+  
+  studentIdButton.addEventListener("click", handleStudentIdCheck);
+  showIdMode.addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById("location-mode").classList.add("hidden");
+    document.getElementById("student-id-mode").classList.remove("hidden");
+  });
+  showLocationMode.addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById("student-id-mode").classList.add("hidden");
+    document.getElementById("location-mode").classList.remove("hidden");
+  });
+
+  // Listen for voting state
+  const settingsRef = doc(db, "lip_sync_2025_settings", "state");
+  onSnapshot(settingsRef, (snap) => {
+    if (snap.exists()) votingEnabled = snap.data().enabled;
+  });
+
+  // Handle Authentication
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // We only expect anonymous users
+      console.log("Anonymous user signed in:", user.uid);
+      userId = user.uid; // Set the global userId for voting
+      await restoreVoteIfExists(); // Check for existing vote
+    } else {
+      // No user, sign in anonymously
+      console.log("No user. Signing in anonymously...");
+      signInAnonymously(auth).catch((err) => {
+          console.error("Anonymous sign-in failed:", err);
+          showError("Could not connect to voting service.");
+      });
+    }
+  });
 }
 </script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-body{margin:0;height:100%;background:black;color:white;font-family:'Inter',sans-serif;overflow:hidden;}
-#bg-video{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.8;}
-.glass-card{background:rgba(0,0,0,0.45);backdrop-filter:blur(24px);border-radius:1.5rem;border:1px solid rgba(255,255,255,0.15);}
-.performer-card.selected{border:2px solid #22c55e;box-shadow:0 0 20px 3px rgba(34,197,94,0.5);}
-#submit-vote-btn.ready{background-color:#22c55e!important;color:black!important;border:none!important;box-shadow:0 0 12px 2px rgba(34,197,94,0.6);}
-.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;}
-#performers-container{overflow-y:auto;max-height:60vh;scrollbar-width:none;}
+html, body {
+  margin: 0; height: 100%;
+  font-family: 'Inter', sans-serif;
+  color: white; overflow: hidden;
+  background-color: black;
+}
+#bg-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; opacity: 0.8; }
+.screen, .glass-card { position: relative; z-index: 1; }
+.glass-card { background: rgba(0,0,0,0.45); backdrop-filter: blur(24px); border-radius: 1.5rem; border: 1px solid rgba(255,255,255,0.15); }
+@keyframes pink-green-glow {
+  0% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+  50% { box-shadow: 0 0 25px 5px rgba(96,163,77,0.9); }
+  100% { box-shadow: 0 0 15px 2px rgba(255,105,180,0.7); }
+}
+button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
+.performer-card.selected {
+  border: 2px solid #22c55e;
+  box-shadow: 0 0 20px 3px rgba(34,197,94,0.5);
+}
+#submit-vote-btn.ready {
+  background-color: #22c55e !important;
+  color: black !important;
+  border: none !important;
+  box-shadow: 0 0 12px 2px rgba(34,197,94,0.6);
+  transition: all 0.3s ease;
+}
+.spinner { border:3px solid rgba(255,255,255,0.15); border-top-color:#fff; border-radius:50%; width:22px;height:22px; animation:spin .9s linear infinite; margin:0 auto; }
+@keyframes spin{to{transform:rotate(360deg)}}
+/* RESPONSIVENESS FIX: Removed fixed max-height. Let flex-1 handle it. */
+#performers-container { overflow-y: auto; padding-right: 4px; }
+.screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+/* Hide scrollbar for Chrome, Safari and Opera */
+#performers-container::-webkit-scrollbar { display: none; }
+/* Hide scrollbar for IE, Edge and Firefox */
+#performers-container { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
 
@@ -239,32 +417,64 @@ body{margin:0;height:100%;background:black;color:white;font-family:'Inter',sans-
   <source src="https://i.imgur.com/mAzP2S1.mp4" type="video/mp4">
 </video>
 
-<!-- LOGIN / LOCATION -->
+<!-- ADMIN PANEL HTML HAS BEEN REMOVED -->
+
+<!-- LOGIN -->
+<!-- We start with the login screen visible. restoreVoteIfExists() will hide it if needed. -->
 <div id="login-screen" class="screen">
-  <div class="glass-card flex flex-col items-center text-center p-8 w-11/12 max-w-md rounded-3xl">
-    <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Header" />
-    <p class="text-white/70 mb-4">You must be inside the GCU Arena to vote.</p>
-    <p id="geo-status" class="text-sm text-red-400 mb-4">Location not verified.</p>
-    <button id="begin-vote-btn" class="px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition">Verify Location & Begin</button>
+  <!-- RESPONSIVENESS FIX: Removed min-h-[440px], added h-auto, max-h-[95vh] and overflow-y-auto for safety on small screens -->
+  <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl h-auto max-h-[95vh] overflow-y-auto shadow-2xl my-4">
+    <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
+    
+    <!-- This is the container for all login options -->
+    <div id="login-options" class="w-full">
+
+      <!-- Location Mode (Default) -->
+      <div id="location-mode" class="w-full">
+        <p id="location-error" class="text-white/70 text-base mb-8 max-w-sm">Location access is required to vote.</p>
+        <button id="location-btn" class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200"><div class="spinner mx-auto"></div></button>
+        <a href="#" id="show-id-mode" class="block text-sm text-white/60 mt-4 underline">Can't use location? Vote with Student ID.</a>
+      </div>
+
+      <!-- Student ID Mode (Hidden by default) -->
+      <div id="student-id-mode" class="hidden w-full">
+        <p id="student-id-error" class="text-white/70 text-base mb-8 max-w-sm">Enter your Student ID to vote.</p>
+        <input type="number" id="student-id-input" placeholder="Enter Student ID" class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-4" />
+        <!-- ***** GLOW CLASS ADDED HERE ***** -->
+        <button id="student-id-btn" class="glow w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200"><span>Verify ID</span></button>
+        <a href="#" id="show-location-mode" class="block text-sm text-white/60 mt-4 underline">Vote with location instead.</a>
+      </div>
+
+    </div>
+    
+    <footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
+      <!-- RELIABILITY FIX: Added onerror to hide if logo fails to load -->
+      <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo" class="h-12 mb-3 object-contain" onerror="this.style.display='none'">
+      <p>Follow Us At <b>@CABGCU</b> On Instagram</p>
+    </footer>
   </div>
 </div>
 
-<!-- VOTING -->
+<!-- VOTING SCREEN -->
 <div id="voting-screen" class="screen hidden">
-  <div class="glass-card w-11/12 max-w-md rounded-3xl p-4 text-center flex flex-col max-h-[95vh] shadow-2xl">
-    <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header" />
-    <h3 class="text-xl font-semibold mb-2">Vote for Your Favorite Team!</h3>
-    <p class="text-white/70 text-sm mb-4">Each device may submit only one vote.</p>
+  <!-- RESPONSIVENESS FIX: Changed max-h-[90vh] to max-h-[95vh] and p-4 for smaller screens -->
+  <div class="glass-card w-11/12 max-w-md rounded-3xl p-4 text-center shadow-2xl flex flex-col max-h-[95vh]">
+    <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
+    <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
+    <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device.</p>
+    <!-- RESPONSIVENESS FIX: This container is now flex-1 and will scroll perfectly within the parent card -->
     <div id="performers-container" class="space-y-4 flex-1">
-      ${Object.keys(performerData).map(id => `
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="${id}">
-        <img src="${performerData[id].img}" class="w-full aspect-video object-cover rounded-lg mb-2" alt="${performerData[id].name}" />
-        <h4 class="text-lg font-semibold">${performerData[id].name}</h4>
-      </div>`).join("")}
+      <!-- RELIABILITY FIX: Added onerror to all performer images -->
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Below" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Below</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Deliverance" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Deliverance</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Mask Off" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Mask Off</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Metro Motion" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Metro Motion</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Sin Game" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Sin Game</h4></div>
+      
+      <!-- ***** TYPO FIX IS HERE ***** -->
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Anonymity" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Anonymity</h4></div>
     </div>
-    <button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40" disabled>
-      Select a Performer to Vote
-    </button>
+    <button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40" disabled>Select a Performer to Vote</button>
   </div>
 </div>
 
@@ -272,10 +482,9 @@ body{margin:0;height:100%;background:black;color:white;font-family:'Inter',sans-
 <div id="confirmation-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-sm rounded-3xl p-8 text-center shadow-2xl">
     <h3 class="text-3xl font-bold mb-4 text-white">✅ Submission Received!</h3>
-    <img id="confirmation-image" class="w-full max-w-[240px] mx-auto rounded-xl mb-6" alt="Team Image" />
+    <img id="confirmation-image" class="w-full max-w-[240px] mx-auto rounded-xl mb-6" alt="Team Image">
     <p id="confirmation-message" class="text-white text-base mb-6"></p>
   </div>
 </div>
 </body>
 </html>
-
