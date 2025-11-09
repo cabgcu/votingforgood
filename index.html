@@ -3,24 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Lip Sync 2025 Voting (TEST MODE)</title>
+<title>Lip Sync 2025 Voting</title>
 
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 
-<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- FingerprintJS -->
 <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs/dist/fp.min.js"></script>
 
-<!-- Firebase -->
 <script type="module">
-// We have added: GoogleAuthProvider, signInWithPopup, and runTransaction
+// Admin panel code (Google Auth, writeBatch, etc.) has been REMOVED.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, runTransaction, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { initializeAppCheck, ReCaptchaV3Provider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
 
 /* ========= Firebase Config ========= */
 const firebaseConfig = {
@@ -41,7 +39,7 @@ let selectedVoteName = "";
 let selectedVoteImage = "";
 let appInitialized = false;
 let votingEnabled = true;
-// NEW Globals for Student ID voting
+// Globals for Student ID voting
 let authMethod = null; // 'location' or 'student_id'
 let verifiedStudentId = null; 
 
@@ -64,56 +62,42 @@ const geofences = [
 
 /* ========= DOM Elements ========= */
 let locationError, locationButton, performersContainer, submitVoteButton, confirmationMessage, confirmationImage;
-// NEW DOM Elements
 let studentIdError, studentIdInput, studentIdButton, showIdMode, showLocationMode;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // --- 1. ASSIGN ALL DOM ELEMENTS ---
+  // --- This function runs once the HTML is fully loaded ---
+  
+  // 1. Assign all DOM elements
   locationError = document.getElementById("location-error");
   locationButton = document.getElementById("location-btn");
   performersContainer = document.getElementById("performers-container");
   submitVoteButton = document.getElementById("submit-vote-btn");
   confirmationMessage = document.getElementById("confirmation-message");
   confirmationImage = document.getElementById("confirmation-image");
+  
   studentIdError = document.getElementById("student-id-error");
   studentIdInput = document.getElementById("student-id-input");
   studentIdButton = document.getElementById("student-id-btn");
   showIdMode = document.getElementById("show-id-mode");
   showLocationMode = document.getElementById("show-location-mode");
 
-  // --- 2. SET INITIAL STATE (NOW SAFE) ---
-  locationButton.disabled = true;
-  locationButton.innerHTML = '<div class="spinner mx-auto"></div>';
+  // 2. Initialize Firebase
+  try {
+    const app = initializeApp(firebaseConfig);
+    const appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
+      isTokenAutoRefreshEnabled: true
+    });
+    
+    db = getFirestore(app);
+    auth = getAuth(app);
 
-  // --- 3. SET UP AUTH LISTENER (NOW SAFE) ---
-  onAuthStateChanged(auth, async (u) => {
-    if (u && u.isAnonymous) { // Anonymous voter
-      console.log("Anonymous user signed in:", u.uid);
-      userId = u.uid; // Set the global userId for voting
-      if (!appInitialized) {
-        appInitialized = true;
-        initApp(); // initApp is now safe to call
-      }
-      await restoreVoteIfExists();
-    } else if (u && !u.isAnonymous) {
-      // This is the admin logging in
-      console.log("Admin user authenticated:", u.uid);
-      if (!appInitialized) {
-        appInitialized = true;
-        initApp(); // initApp is now safe to call
-      }
-    }
-  });
+    // 3. Start authentication & app logic
+    initializeAppLogic();
 
-  // --- 4. START THE APP (NOW SAFE) ---
-  // Sign in anonymously for the voting app portion.
-  signInAnonymously(auth).catch(console.error);
-
-  // Also, initialize the app immediately for the admin panel logic.
-  // This is now safe because all elements are loaded.
-  if (!appInitialized) {
-      appInitialized = true;
-      initApp();
+  } catch (e) {
+    console.error("Firebase initialization failed:", e);
+    document.body.innerHTML = "<h1>Error: Could not initialize app. Please contact support.</h1>";
   }
 });
 
@@ -129,8 +113,8 @@ function isInsideGeofence(lat, long) {
   );
 }
 
-// Updated Loading function
 function setLoading(isLoading, message = "Verifying your location...") {
+  if (!locationButton) return;
   locationButton.disabled = isLoading;
   if (isLoading) {
     locationButton.innerHTML = '<div class="spinner mx-auto"></div>';
@@ -141,17 +125,17 @@ function setLoading(isLoading, message = "Verifying your location...") {
   }
 }
 
-// Updated Error function
 function showError(msg, method = 'location') {
   setLoading(false); 
-  setStudentIdLoading(false); // Make sure to stop student ID loading too
+  setStudentIdLoading(false); 
   const el = (method === 'location') ? locationError : studentIdError;
+  if (!el) return;
   el.textContent = msg;
   el.classList.add("text-red-400", "font-bold");
 }
 
-// NEW Student ID Loading function
 function setStudentIdLoading(isLoading, message = "Verifying your ID...") {
+  if (!studentIdButton) return;
   studentIdButton.disabled = isLoading;
   if (isLoading) {
     studentIdButton.innerHTML = '<div class="spinner mx-auto"></div>';
@@ -162,26 +146,32 @@ function setStudentIdLoading(isLoading, message = "Verifying your ID...") {
   }
 }
 
-/* ========= Restore Vote If Exists (CRITICAL FIX) ========= */
+/* ========= Restore Vote If Exists ========= */
 async function restoreVoteIfExists() {
-  // We must have the userId to check
-  if (!userId) return; 
+  if (!userId || !db) return;
   
-  // FIX: We check for a vote doc named after the *userId*, not the visitorId.
-  // This matches your security rules.
-  const snap = await getDoc(doc(db, "lip_sync_2025_votes", userId));
-  
-  if (snap.exists()) {
-    const { voteId } = snap.data();
-    if (performerData[voteId]) {
-      const performer = performerData[voteId];
-      confirmationImage.src = performer.img;
-      confirmationMessage.innerHTML = `
-        Your vote for <b>${performer.name}</b> has been recorded.<br><br>
-        Thank you for attending <b>Lip Sync: For Good!</b>
-      `;
-      setScreen("confirmation-screen");
+  try {
+    const snap = await getDoc(doc(db, "lip_sync_2025_votes", userId));
+    if (snap.exists()) {
+      const { voteId } = snap.data();
+      if (performerData[voteId]) {
+        const performer = performerData[voteId];
+        confirmationImage.src = performer.img;
+        // Add onerror handler for confirmation image
+        confirmationImage.onerror = () => { confirmationImage.style.display = 'none'; };
+        confirmationMessage.innerHTML = `
+          Your vote for <b>${performer.name}</b> has been recorded.<br><br>
+          Thank you for attending <b>Lip Sync: For Good!</b>
+        `;
+        setScreen("confirmation-screen");
+      }
+    } else {
+        // No vote found, show the login screen
+        setScreen("login-screen");
     }
+  } catch (e) {
+      console.error("Error restoring vote:", e);
+      setScreen("login-screen"); // Fallback
   }
 }
 
@@ -200,7 +190,7 @@ function handleCardSelection(e) {
   submitVoteButton.classList.add("ready");
 }
 
-/* ========= Submit Vote (CRITICAL FIX + NEW STUDENT ID LOGIC) ========= */
+/* ========= Submit Vote ========= */
 async function submitVote(voteId, btn) {
   if (!visitorId) return showError("Fingerprint not ready.");
   if (!votingEnabled) return showError("Voting is currently disabled.");
@@ -210,7 +200,7 @@ async function submitVote(voteId, btn) {
   btn.textContent = "Submitting...";
 
   try {
-    // FIX: The document ID *must* be the 'userId' to match your security rules.
+    // The document ID is the 'userId' to enforce one-vote-per-device-session
     const voteRef = doc(db, "lip_sync_2025_votes", userId);
     
     const voteData = {
@@ -224,19 +214,14 @@ async function submitVote(voteId, btn) {
 
     if (authMethod === 'student_id') {
       // --- STUDENT ID VOTE (uses a Transaction) ---
-      voteData.studentId = verifiedStudentId; // Add the student ID to the vote doc
+      voteData.studentId = verifiedStudentId; 
       const studentIdRef = doc(db, "student_ids", verifiedStudentId);
 
       await runTransaction(db, async (transaction) => {
-        // 1. Check if the ID is *still* valid
         const idDoc = await transaction.get(studentIdRef);
         if (!idDoc.exists()) throw new Error("Student ID not found.");
         if (idDoc.data().hasVoted) throw new Error("This ID has already voted.");
-
-        // 2. Set the vote document
         transaction.set(voteRef, voteData);
-        
-        // 3. Update the student_id doc to mark it as used
         transaction.update(studentIdRef, { hasVoted: true });
       });
 
@@ -247,6 +232,8 @@ async function submitVote(voteId, btn) {
 
     // --- Show Confirmation (same for both) ---
     confirmationImage.src = selectedVoteImage;
+    // Add onerror handler for confirmation image
+    confirmationImage.onerror = () => { confirmationImage.style.display = 'none'; };
     confirmationMessage.innerHTML = `
       Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>
       Thank you for attending <b>Lip Sync: For Good!</b>
@@ -256,16 +243,16 @@ async function submitVote(voteId, btn) {
   } catch (e) {
     btn.disabled = false;
     btn.textContent = "Vote Failed – Retry";
-    // Show a more specific error
     if (e.message.includes("already voted")) {
         showError("This Student ID has already been used to vote.", 'student_id');
     } else {
         showError("Error saving vote: " + e.message, authMethod);
     }
+    console.error("Submit Vote Error:", e);
   }
 }
 
-/* ========= Location Check (UPDATED) ========= */
+/* ========= Location Check ========= */
 async function handleLocationCheck() {
   if (!navigator.geolocation) return showError("Your device does not support location access.", 'location');
   if (!votingEnabled) return showError("Voting is currently closed.", 'location');
@@ -287,7 +274,7 @@ async function handleLocationCheck() {
   );
 }
 
-/* ========= NEW: Student ID Check ========= */
+/* ========= Student ID Check ========= */
 async function handleStudentIdCheck() {
   if (!votingEnabled) return showError("Voting is currently closed.", 'student_id');
   
@@ -320,29 +307,31 @@ async function handleStudentIdCheck() {
   }
 }
 
+/* ========= Main App Initialization Logic (CLEANED) ========= */
+function initializeAppLogic() {
+  if (appInitialized) return;
+  appInitialized = true;
 
-/* ========= Initialize App (UPDATED) ========= */
-function initApp() {
+  console.log("Initializing App Logic...");
+
+  // Start FingerprintJS
   FingerprintJS.load()
     .then(fp => fp.get())
-    .then(async r => {
+    .then(r => {
       visitorId = r.visitorId;
-      locationButton.disabled = false;
-      locationButton.classList.add("glow");
-      locationButton.innerHTML = "<span>Begin Voting</span>";
-      // We wait for userId to be set by onAuthStateChanged before restoring
-      if (userId) {
-          await restoreVoteIfExists();
+      if (locationButton) {
+          locationButton.disabled = false;
+          locationButton.classList.add("glow");
+          locationButton.innerHTML = "<span>Begin Voting</span>";
       }
     })
     .catch(() => showError("Unable to verify identity. Please refresh."));
 
-  // Voting App Listeners
+  // Attach all voting app listeners
   locationButton.addEventListener("click", handleLocationCheck);
   performersContainer.addEventListener("click", handleCardSelection);
   submitVoteButton.addEventListener("click", () => submitVote(selectedVoteId, submitVoteButton));
   
-  // NEW Student ID Listeners
   studentIdButton.addEventListener("click", handleStudentIdCheck);
   showIdMode.addEventListener("click", (e) => {
     e.preventDefault();
@@ -355,146 +344,29 @@ function initApp() {
     document.getElementById("location-mode").classList.remove("hidden");
   });
 
+  // Listen for voting state
   const settingsRef = doc(db, "lip_sync_2025_settings", "state");
   onSnapshot(settingsRef, (snap) => {
     if (snap.exists()) votingEnabled = snap.data().enabled;
   });
 
-  // --- NEW: ADMIN PANEL LOGIC ---
-  // We put this here so it has access to `auth` and `db`
-  initAdminPanel();
-}
-
-/* ========= NEW: Admin Panel Uploader Function (ALWAYS ON) ========= */
-function initAdminPanel() {
-  const panel = document.getElementById('admin-panel');
-  if (!panel) return; // Something is wrong
-
-  // Get admin elements
-  const loginBtn = document.getElementById('admin-login-btn');
-  const uploadBtn = document.getElementById('admin-upload-btn');
-  const idTextarea = document.getElementById('id-textarea');
-  const statusEl = document.getElementById('admin-status');
-  let adminUid = null;
-
-  function logStatus(msg, isError = false) {
-    console.log(msg);
-    // Add to top, and limit to 3000 chars
-    statusEl.innerHTML = (msg + "\n" + statusEl.innerHTML).substring(0, 3000); 
-    if (isError) {
-        statusEl.classList.add('text-red-400');
+  // Handle Authentication
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // We only expect anonymous users
+      console.log("Anonymous user signed in:", user.uid);
+      userId = user.uid; // Set the global userId for voting
+      await restoreVoteIfExists(); // Check for existing vote
     } else {
-        statusEl.classList.remove('text-red-400');
-    }
-  }
-
-  // 1. Admin Login
-  loginBtn.addEventListener('click', async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      adminUid = result.user.uid;
-      logStatus(`✅ Logged in as: ${result.user.email}`);
-      logStatus(`Your Admin UID is: ${adminUid}`);
-      logStatus(`---> YOU CAN NOW USE THE UPLOADER. <---`);
-      loginBtn.textContent = `Logged in as ${result.user.displayName}`;
-      loginBtn.disabled = true;
-      uploadBtn.disabled = false;
-    } catch (error) {
-      logStatus(`❌ Login Failed: ${error.message}`, true);
-    }
-  });
-
-  // 2. Admin Upload
-  uploadBtn.addEventListener('click', async () => {
-    if (!adminUid) return logStatus("Please log in first.", true);
-    
-    const allIds = idTextarea.value.split(/\r?\n/).filter(id => id.trim() !== '');
-    if (allIds.length === 0) return logStatus("No IDs pasted in the box.", true);
-
-    logStatus(`Starting upload of ${allIds.length} IDs...`);
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = "Uploading...";
-
-    const chunks = [];
-    for (let i = 0; i < allIds.length; i += 500) {
-      chunks.push(allIds.slice(i, i + 500));
-    }
-    
-    try {
-      for (let i = 0; i < chunks.length; i++) {
-        const batch = writeBatch(db);
-        const chunk = chunks[i];
-        
-        chunk.forEach(studentId => {
-          const docRef = doc(db, "student_ids", studentId.trim());
-          batch.set(docRef, { hasVoted: false });
-        });
-        
-        await batch.commit();
-        logStatus(`Wrote batch ${i + 1} of ${chunks.length} (${chunk.length} docs)`);
-      }
-      logStatus("================================");
-      logStatus(`✅✅✅ SUCCESS! All ${allIds.length} documents uploaded. ✅✅✅`);
-      uploadBtn.textContent = "Upload Complete!";
-    } catch (error) {
-      logStatus(`❌❌❌ ERROR: ${error.message}`, true);
-      logStatus("Upload failed. Check your security rules and console.", true);
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = "2. Start Batch Upload";
+      // No user, sign in anonymously
+      console.log("No user. Signing in anonymously...");
+      signInAnonymously(auth).catch((err) => {
+          console.error("Anonymous sign-in failed:", err);
+          showError("Could not connect to voting service.");
+      });
     }
   });
 }
-
-
-/* ========= Firebase Init + App Check ========= */
-const app = initializeApp(firebaseConfig);
-const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),
-  isTokenAutoRefreshEnabled: true
-});
-db = getFirestore(app);
-auth = getAuth(app);
-
-/* ========= Console Verification ========= */
-getToken(appCheck)
-  .then(t => console.log("✅ App Check token issued:", t?.token?.slice(0, 25) + "..."))
-  .catch(err => console.error("❌ App Check failed:", err));
-
-/* ========= Auth (UPDATED FOR TESTING) ========= */
-// This entire block is now moved inside the DOMContentLoaded listener.
-/*
-onAuthStateChanged(auth, async (u) => {
-  if (u && u.isAnonymous) { // Anonymous voter
-    console.log("Anonymous user signed in:", u.uid);
-    userId = u.uid; // Set the global userId for voting
-    if (!appInitialized) {
-      appInitialized = true;
-      initApp();
-    }
-    await restoreVoteIfExists();
-  } else if (u && !u.isAnonymous) {
-    // This is the admin logging in
-    console.log("Admin user authenticated:", u.uid);
-    // We still init the app, which is fine
-    if (!appInitialized) {
-      appInitialized = true;
-      initApp();
-    }
-  }
-});
-
-// ALWAYS sign in anonymously for the voting app portion.
-// The admin Google sign-in will work alongside this.
-signInAnonymously(auth).catch(console.error);
-
-// Also, initialize the app immediately in case anonymous auth is slow.
-// This gets the admin panel logic ready.
-if (!appInitialized) {
-    appInitialized = true;
-    initApp();
-}
-*/
 </script>
 
 <style>
@@ -502,9 +374,7 @@ if (!appInitialized) {
 html, body {
   margin: 0; height: 100%;
   font-family: 'Inter', sans-serif;
-  color: white; 
-  /* Changed overflow: hidden to auto */
-  overflow: auto; 
+  color: white; overflow: hidden;
   background-color: black;
 }
 #bg-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; opacity: 0.8; }
@@ -529,27 +399,13 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
 }
 .spinner { border:3px solid rgba(255,255,255,0.15); border-top-color:#fff; border-radius:50%; width:22px;height:22px; animation:spin .9s linear infinite; margin:0 auto; }
 @keyframes spin{to{transform:rotate(360deg)}}
-#performers-container { overflow-y: auto; max-height: 60vh; padding-right: 4px; }
-/* Changed .screen to be relative for testing */
-.screen { 
-  position: relative; /* Changed from fixed */
-  z-index: 2;
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  padding: 1rem;
-  /* Added min-height to push screens apart */
-  min-height: 100vh;
-}
-/* This makes the login screen the default visible one */
-#login-screen {
-    display: flex;
-}
-/* We still hide the other screens by default */
-#voting-screen.hidden,
-#confirmation-screen.hidden {
-    display: none;
-}
+/* RESPONSIVENESS FIX: Removed fixed max-height. Let flex-1 handle it. */
+#performers-container { overflow-y: auto; padding-right: 4px; }
+.screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+/* Hide scrollbar for Chrome, Safari and Opera */
+#performers-container::-webkit-scrollbar { display: none; }
+/* Hide scrollbar for IE, Edge and Firefox */
+#performers-container { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
 
@@ -558,41 +414,18 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
   <source src="https://i.imgur.com/mAzP2S1.mp4" type="video/mp4">
 </video>
 
-<!-- ========= ADMIN UPLOADER PANEL (ALWAYS VISIBLE FOR TESTING) ========= -->
-<div id="admin-panel" class="relative z-50 w-full max-w-2xl mx-auto my-8">
-  <div class="glass-card" style="padding: 20px;">
-    <h2 class="text-2xl font-bold mb-4">Admin ID Uploader (TEST MODE)</h2>
-    
-    <button id="admin-login-btn" class="w-full py-2 px-4 rounded-lg bg-blue-600 text-white mb-4">1. Log In with Google</button>
-    
-    <p class="text-white/70 mb-2">Paste your list of IDs here (one ID per line):</p>
-    <textarea id="id-textarea" rows="10" class="w-full p-2 rounded-lg bg-white/10 text-white border border-white/30 mb-4" placeholder="1234567\n1234568\n1234569\n..."></textarea>
-    
-    <button id="admin-upload-btn" class="w-full py-2 px-4 rounded-lg bg-green-600 text-white disabled:opacity-50" disabled>2. Start Batch Upload</button>
-    
-    <div id="admin-status" class="mt-4 p-4 bg-black/30 rounded-lg text-sm text-white/90" style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
-      <p>Waiting to start...</p>
-    </div>
-  </div>
-</div>
-
-
-<!-- LOGIN (UPDATED) -->
 <div id="login-screen" class="screen">
-  <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl min-h-[440px] shadow-2xl mt-10 mb-10">
+  <div class="glass-card flex flex-col justify-between items-center text-center p-8 w-11/12 max-w-md rounded-3xl h-auto max-h-[95vh] overflow-y-auto shadow-2xl my-4">
     <img class="w-full max-w-[240px] mb-6" src="https://i.imgur.com/EnuWGLA.png" alt="Lip Sync Vote Header">
     
-    <!-- This is the container for all login options -->
     <div id="login-options" class="w-full">
 
-      <!-- Location Mode (Default) -->
       <div id="location-mode" class="w-full">
         <p id="location-error" class="text-white/70 text-base mb-8 max-w-sm">Location access is required to vote.</p>
         <button id="location-btn" class="w-auto min-w-[180px] px-8 py-3 text-base text-white rounded-xl border border-white/50 shadow-lg transition duration-200"><div class="spinner mx-auto"></div></button>
         <a href="#" id="show-id-mode" class="block text-sm text-white/60 mt-4 underline">Can't use location? Vote with Student ID.</a>
       </div>
 
-      <!-- Student ID Mode (Hidden by default) -->
       <div id="student-id-mode" class="hidden w-full">
         <p id="student-id-error" class="text-white/70 text-base mb-8 max-w-sm">Enter your Student ID to vote.</p>
         <input type="number" id="student-id-input" placeholder="Enter Student ID" class="w-full p-3 rounded-lg bg-white/10 text-white border border-white/30 text-center mb-4" />
@@ -603,31 +436,29 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
     </div>
     
     <footer class="pt-6 text-white/70 text-sm flex flex-col items-center max-w-sm mt-6">
-      <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo" class="h-12 mb-3 object-contain">
+      <img src="https://ik.imagekit.io/cabgcu/Untitled%20design-3.png" alt="CAB Logo" class="h-12 mb-3 object-contain" onerror="this.style.display='none'">
       <p>Follow Us At <b>@CABGCU</b> On Instagram</p>
     </footer>
   </div>
 </div>
 
-<!-- VOTING SCREEN (No changes needed) -->
 <div id="voting-screen" class="screen hidden">
-  <div class="glass-card w-11/12 max-w-md rounded-3xl p-6 text-center shadow-2xl flex flex-col max-h-[90vh]">
+  <div class="glass-card w-11/12 max-w-md rounded-3xl p-4 text-center shadow-2xl flex flex-col max-h-[95vh]">
     <img class="w-full max-w-[180px] mx-auto mb-4" src="https://i.imgur.com/EnuWGLA.png" alt="Header">
     <h3 class="text-xl font-semibold mb-2">Vote For Your Favorite Lip Sync Team!</h3>
     <p class="text-white/70 text-sm mb-4">Each attendee may submit only one vote per device.</p>
     <div id="performers-container" class="space-y-4 flex-1">
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Below</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Deliverance</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option3"><img src="https://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Mask Off</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Metro Motion</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Sin Games</h4></div>
-      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2"><h4 class="text-lg font-semibold">Anonymity</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option1"><img src="https://i.imgur.com/DIyK2zX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Below" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Below</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option2"><img src="https://i.imgur.com/s7Unz9r.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Deliverance" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Deliverance</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option3"><img src="httpsks://i.imgur.com/x0BI8Mc.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Mask Off" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Mask Off</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option4"><img src="https://i.imgur.com/4rG47gL.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Metro Motion" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Metro Motion</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option5"><img src="https://i.imgur.com/k75mMUz.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Sin Games" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Sin Games</h4></div>
+      <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="option6"><img src="https://i.imgur.com/3dJQFeX.jpeg" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Performer Anonymity" onerror="this.style.display='none'"><h4 class="text-lg font-semibold">Anonymity</h4></div>
     </div>
     <button id="submit-vote-btn" class="mt-6 w-full py-3 px-8 text-base bg-black border border-white/50 text-white rounded-xl transition disabled:opacity-40" disabled>Select a Performer to Vote</button>
   </div>
 </div>
 
-<!-- CONFIRMATION (No changes needed) -->
 <div id="confirmation-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-sm rounded-3xl p-8 text-center shadow-2xl">
     <h3 class="text-3xl font-bold mb-4 text-white">✅ Submission Received!</h3>
@@ -635,8 +466,5 @@ button.glow { animation: pink-green-glow 8s ease-in-out infinite; }
     <p id="confirmation-message" class="text-white text-base mb-6"></p>
   </div>
 </div>
-
-<!-- The old hidden admin panel is removed from here -->
-
 </body>
 </html>
