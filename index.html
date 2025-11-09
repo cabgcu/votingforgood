@@ -44,6 +44,7 @@ button.glow{animation:pink-green-glow 6s ease-in-out infinite;}
 .spinner{border:3px solid rgba(255,255,255,.15);border-top-color:#fff;border-radius:50%;
   width:22px;height:22px;animation:spin .9s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
+.vertical-image{width:100%;height:auto;border-radius:0.75rem;}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -124,7 +125,15 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gsta
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
 
-const firebaseConfig={apiKey:"AIzaSyBoYf1_IhILJ96Y9KMcwrVjHMFLT5YEKuQ",authDomain:"lip-sync-2025.firebaseapp.com",projectId:"lip-sync-2025",storageBucket:"lip-sync-2025.appspot.com",messagingSenderId:"118581305479",appId:"1:118581305479:web:7a7335c1be6e816cc7d822",measurementId:"G-NQ0GMG05Q2"};
+const firebaseConfig={
+  apiKey:"AIzaSyBoYf1_IhILJ96Y9KMcwrVjHMFLT5YEKuQ",
+  authDomain:"lip-sync-2025.firebaseapp.com",
+  projectId:"lip-sync-2025",
+  storageBucket:"lip-sync-2025.appspot.com",
+  messagingSenderId:"118581305479",
+  appId:"1:118581305479:web:7a7335c1be6e816cc7d822",
+  measurementId:"G-NQ0GMG05Q2"
+};
 
 let db,auth,userId,deviceHash=null;
 let selectedVoteId=null,selectedVoteName="",selectedVoteImage="";
@@ -171,25 +180,21 @@ function showError(msg,type='location'){const el=(type==='location')?document.ge
 async function restoreVoteIfExists(){
   if(!userId||!db)return;
   try{
-    const voteSnap = await getDoc(doc(db,"lip_sync_2025_votes",userId));
+    const voteSnap=await getDoc(doc(db,"lip_sync_2025_votes",userId));
     if(voteSnap.exists()){
-      const v = voteSnap.data().voteId;
-      const p = performerData[v];
-      document.getElementById("confirmation-image").src = p.img;
-      document.getElementById("confirmation-message").innerHTML =
-        `Your vote for <b>${p.name}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
-      setScreen("confirmation-screen");
-      return;
+      const v=voteSnap.data().voteId;
+      const p=performerData[v];
+      document.getElementById("confirmation-image").src=p.img;
+      document.getElementById("confirmation-message").innerHTML=`Your vote for <b>${p.name}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
+      setScreen("confirmation-screen");return;
     }
     if(deviceHash){
-      const fSnap = await getDoc(doc(db,"voted_fingerprints",deviceHash));
+      const fSnap=await getDoc(doc(db,"voted_fingerprints",deviceHash));
       if(fSnap.exists()){
-        const p = performerData[fSnap.data().voteId];
-        document.getElementById("confirmation-image").src = p.img;
-        document.getElementById("confirmation-message").innerHTML =
-          `This device has already voted for <b>${p.name}</b>.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
-        setScreen("confirmation-screen");
-        return;
+        const p=performerData[fSnap.data().voteId];
+        document.getElementById("confirmation-image").src=p.img;
+        document.getElementById("confirmation-message").innerHTML=`This device has already voted for <b>${p.name}</b>.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
+        setScreen("confirmation-screen");return;
       }
     }
     setScreen("login-screen");
@@ -224,15 +229,13 @@ async function submitVote(voteId,btn){
       await setDoc(studentRef,{hasVoted:true},{merge:true});
     }
     document.getElementById("confirmation-image").src=selectedVoteImage;
-    document.getElementById("confirmation-message").innerHTML=
-      `Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
+    document.getElementById("confirmation-message").innerHTML=`Your vote for <b>${selectedVoteName}</b> has been recorded.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
     setScreen("confirmation-screen");
   }catch(e){
     if(e.message.includes("VOTED_ALREADY:")){
       const p=performerData[e.message.split(":")[1]];
       document.getElementById("confirmation-image").src=p.img;
-      document.getElementById("confirmation-message").innerHTML=
-        `This device has already voted for <b>${p.name}</b>.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
+      document.getElementById("confirmation-message").innerHTML=`This device has already voted for <b>${p.name}</b>.<br><br>Thank you for attending <b>Lip Sync: For Good!</b>`;
       setScreen("confirmation-screen");
     }else showError("Error submitting vote. Please refresh.");
   }
@@ -274,45 +277,57 @@ async function initializeAppLogic(){
     document.getElementById("student-id-mode").classList.add("hidden");
     document.getElementById("location-mode").classList.remove("hidden");});
   document.getElementById("performers-container").addEventListener("click",handleCardSelection);
-  document.getElementById("submit-vote-btn").addEventListener("click",()=>submitVote(selectedVoteId,document.getElementById("submit-vote-btn")));
+  document.getElementById("submit-vote-btn").addEventListener("click",()=>submitVote(selectedVoteId,document.getElementById("submit-vote-btnHere’s the continuation and completion of your full HTML (including the “Voting Closed” image logic):  
 
-  const sRef=doc(db,"lip_sync_2025_settings","state");
-  onSnapshot(sRef,s=>{
-    if(s.exists()){votingEnabled=s.data().enabled;
-      const header=document.getElementById("voting-header");
-      const sub=document.getElementById("voting-subtext");
-      const btn=document.getElementById("submit-vote-btn");
-      const container=document.getElementById("performers-container");
-      if(!votingEnabled){
-        header.textContent="Voting Is Now Closed!";
-        sub.textContent="Thank you for joining Lip Sync: For Good!";
-        const closedImage="https://i.imgur.com/kWKvSbS.jpeg";
-        container.innerHTML=`
-          <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl">
-            <img src="${closedImage}" class="w-full aspect-video object-cover rounded-lg mb-2" alt="Voting Closed">
-            <h4 class="text-lg font-semibold text-white">Voting Has Ended</h4>
-            <p class="text-white/70 text-sm mt-1">Thank you for being part of Lip Sync: For Good!</p>
-          </div>`;
-        btn.disabled=true;
-        btn.textContent="Voting Closed";
-      }else{
-        header.textContent="Vote For Your Favorite Lip Sync Team!";
-        sub.textContent="Each attendee may submit only one vote per device or Student ID.";
+```html
+  const sRef = doc(db, "lip_sync_2025_settings", "state");
+  onSnapshot(sRef, (s) => {
+    if (s.exists()) {
+      votingEnabled = s.data().enabled;
+      const header = document.getElementById("voting-header");
+      const sub = document.getElementById("voting-subtext");
+      const btn = document.getElementById("submit-vote-btn");
+      const container = document.getElementById("performers-container");
+
+      if (!votingEnabled) {
+        header.textContent = "Voting Is Now Closed!";
+        sub.textContent = "Thank you for joining Lip Sync: For Good!";
+        const closedImage = "https://i.imgur.com/kWKvSbS.jpeg";
+        container.innerHTML = `
+          <div class="p-2">
+            <img src="${closedImage}" class="vertical-image mx-auto" alt="Voting Closed">
+          </div>
+        `;
+        btn.disabled = true;
+        btn.textContent = "Voting Closed";
+      } else {
+        header.textContent = "Vote For Your Favorite Lip Sync Team!";
+        sub.textContent = "Each attendee may submit only one vote per device or Student ID.";
+        container.innerHTML = Object.entries(performerData).map(([id, { name, img }]) => `
+          <div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="${id}">
+            <img src="${img}" class="w-full aspect-video object-cover rounded-lg mb-2" alt="${name}">
+            <h4 class="text-lg font-semibold">${name}</h4>
+          </div>
+        `).join('');
+        btn.disabled = true;
+        btn.textContent = "Select a Performer to Vote";
       }
     }
   });
 
-  try{deviceHash=await generateDeviceHash();}catch{showError("Unable to verify device identity.");}
-  onAuthStateChanged(auth,async u=>{if(u){userId=u.uid;await restoreVoteIfExists();}else await signInAnonymously(auth);});
+  try {
+    deviceHash = await generateDeviceHash();
+  } catch {
+    showError("Unable to verify device identity.");
+  }
 
-  const cont=document.getElementById("performers-container");
-  cont.innerHTML=Object.entries(performerData).map(([id,{name,img}])=>
-    `<div class="performer-card bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer" data-vote-id="${id}">
-      <img src="${img}" class="w-full aspect-video object-cover rounded-lg mb-2" alt="${name}">
-      <h4 class="text-lg font-semibold">${name}</h4>
-    </div>`).join('');
+  onAuthStateChanged(auth, async (u) => {
+    if (u) {
+      userId = u.uid;
+      await restoreVoteIfExists();
+    } else await signInAnonymously(auth);
+  });
 }
 </script>
 </body>
 </html>
-
