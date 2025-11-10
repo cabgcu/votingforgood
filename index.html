@@ -200,7 +200,7 @@ function handleLocationCheck(){
       const retry=document.getElementById("retry-location");
       retry.classList.remove("hidden");
       if(err.code===1){
-        showError("Location access is blocked. Go to Settings → Safari → Location → Allow or Ask Next Time.","location");
+        showError("Location access is blocked. Go to Settings → Safari or Chrome → Location → Allow or Ask Next Time.","location");
       }else{
         showError("Location access is needed to vote. Please refresh!");
       }
