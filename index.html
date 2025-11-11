@@ -42,12 +42,25 @@ button.glow{animation:pink-green-glow 6s ease-in-out infinite;}
 #submit-vote-btn.ready{background:#22c55e!important;color:black!important;border:none!important;
   box-shadow:0 0 10px 2px rgba(34,197,94,.6);transition:all .3s ease;}
 .vertical-image{width:100%;height:auto;border-radius:0.75rem;}
+
+/* ---------- Low Power Mode / Transparency Fallback ---------- */
+@media (prefers-reduced-transparency: reduce) {
+  #bg-video { display: none !important; }
+  body {
+    background: radial-gradient(circle at 50% 20%, #111 0%, #000 100%) !important;
+  }
+  .glass-card {
+    background: rgba(0,0,0,0.85) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 0 30px rgba(0,0,0,0.6);
+  }
+}
 </style>
 </head>
 
 <body>
-<video autoplay muted playsinline loop preload="auto" id="bg-video"
-  poster="https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/EnuWGLA%20-%20Imgur.png?alt=media&token=c06a0ce1-d2e3-4cde-ac4a-a5ba89142b30">
+<video autoplay muted playsinline loop preload="auto" id="bg-video">
   <source src="https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/mAzP2S1%20-%20Imgur.mp4?alt=media&token=dc264640-a95e-4494-9d27-83ab5380a1a6" type="video/mp4">
 </video>
 
@@ -122,6 +135,7 @@ button.glow{animation:pink-green-glow 6s ease-in-out infinite;}
   </div>
 </div>
 
+<!-- FIREBASE APP -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -139,7 +153,7 @@ const firebaseConfig = {
 };
 
 let db, auth, userId, deviceHash = null;
-let selectedVoteId = null, selectedVoteName = "", selectedVoteImage = "";
+let selectedVoteId = null, selectedVoteName = "";
 let appInitialized = false, votingEnabled = true, authMethod = null, verifiedStudentId = null;
 
 const performerData = {
@@ -227,7 +241,6 @@ function handleCardSelection(e){
   c.classList.add("selected");
   selectedVoteId=c.dataset.voteId;
   selectedVoteName=performerData[selectedVoteId].name;
-  selectedVoteImage=performerData[selectedVoteId].img;
   const b=document.getElementById("submit-vote-btn");
   b.disabled=false;b.textContent=`Submit Vote for ${selectedVoteName}`;b.classList.add("ready");
 }
@@ -336,6 +349,27 @@ async function initializeAppLogic(){
     }else await signInAnonymously(auth);
   });
 }
+</script>
+
+<!-- Autoplay fallback fix -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const video = document.getElementById('bg-video');
+  const style = document.createElement('style');
+  let autoplayWorked = false;
+
+  video.play().then(() => autoplayWorked = true).catch(() => {});
+
+  setTimeout(() => {
+    if (!autoplayWorked || video.paused) {
+      style.textContent = `
+        body { background: radial-gradient(circle at 50% 20%, #111 0%, #000 100%) !important; }
+        #bg-video { display: none !important; }
+      `;
+      document.head.appendChild(style);
+    }
+  }, 1200);
+});
 </script>
 </body>
 </html>
