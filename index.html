@@ -16,9 +16,6 @@
 document.fonts.ready.then(()=>document.documentElement.classList.add('fonts-loaded'));
 </script>
 
-<!-- FingerprintJS -->
-<script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs/dist/fp.min.js"></script>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 html{opacity:0;transition:opacity .3s ease-in;font-size:clamp(14px,2vw,17px);}
@@ -43,7 +40,6 @@ button.glow{animation:pink-green-glow 6s ease-in-out infinite;}
   box-shadow:0 0 10px 2px rgba(34,197,94,.6);transition:all .3s ease;}
 .vertical-image{width:100%;height:auto;border-radius:0.75rem;}
 
-/* ---------- Low Power Mode / Transparency Fallback ---------- */
 @media (prefers-reduced-transparency: reduce) {
   #bg-video { display: none !important; }
   body {
@@ -125,7 +121,6 @@ button.glow{animation:pink-green-glow 6s ease-in-out infinite;}
       transition disabled:opacity-40" disabled>Select a Performer to Vote</button>
   </div>
 </div>
-
 <!-- CONFIRMATION -->
 <div id="confirmation-screen" class="screen hidden">
   <div class="glass-card w-11/12 max-w-sm rounded-3xl p-6 text-center shadow-2xl">
@@ -152,52 +147,53 @@ const firebaseConfig = {
   measurementId: "G-NQ0GMG05Q2"
 };
 
-let db, auth, userId, deviceHash = null;
+let db, auth, userId;
+let deviceHash = null;
 let selectedVoteId = null, selectedVoteName = "";
 let appInitialized = false, votingEnabled = true, authMethod = null, verifiedStudentId = null;
 
 const performerData = {
-  option1: { name: "Below", img: "https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/DIyK2zX%20-%20Imgur.jpg?alt=media&token=556535f9-b60c-4fd7-a365-e9cef3f78ecd" },
-  option2: { name: "Deliverance", img: "https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/s7Unz9r%20-%20Imgur.jpg?alt=media&token=c8479380-c66d-4778-9ba2-36eb161a84de" },
-  option3: { name: "Mask Off", img: "https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/x0BI8Mc%20-%20Imgur.jpg?alt=media&token=f2d1ab93-aa73-412e-b00e-a1cdef71d9ee" },
-  option4: { name: "Metro Motion", img: "https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/4rG47gL%20-%20Imgur.jpg?alt=media&token=1262b438-78f8-4ca4-ba6e-69cb35a8edad" },
-  option5: { name: "Sin Game", img: "https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/k75mMUz%20-%20Imgur.jpg?alt=media&token=577a7b48-68e6-4171-ac7d-531ee35b850e" },
-  option6: { name: "Anonymity", img: "https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/3dJQFeX%20-%20Imgur.jpg?alt=media&token=dd2e317e-ac13-47eb-bd15-97f8491d4fc2" }
+  option1:{name:"Below",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/DIyK2zX%20-%20Imgur.jpg?alt=media&token=556535f9-b60c-4fd7-a365-e9cef3f78ecd"},
+  option2:{name:"Deliverance",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/s7Unz9r%20-%20Imgur.jpg?alt=media&token=c8479380-c66d-4778-9ba2-36eb161a84de"},
+  option3:{name:"Mask Off",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/x0BI8Mc%20-%20Imgur.jpg?alt=media&token=f2d1ab93-aa73-412e-b00e-a1cdef71d9ee"},
+  option4:{name:"Metro Motion",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/4rG47gL%20-%20Imgur.jpg?alt=media&token=1262b438-78f8-4ca4-ba6e-69cb35a8edad"},
+  option5:{name:"Sin Game",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/k75mMUz%20-%20Imgur.jpg?alt=media&token=577a7b48-68e6-4171-ac7d-531ee35b850e"},
+  option6:{name:"Anonymity",img:"https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/3dJQFeX%20-%20Imgur.jpg?alt=media&token=dd2e317e-ac13-47eb-bd15-97f8491d4fc2"}
 };
 
-const closedImage = "https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/kWKvSbS%20-%20Imgur.jpg?alt=media&token=f0e1f6a7-ddc9-46e1-9cef-7268031136c3";
+const closedImage="https://firebasestorage.googleapis.com/v0/b/lip-sync-2025.firebasestorage.app/o/kWKvSbS%20-%20Imgur.jpg?alt=media&token=f0e1f6a7-ddc9-46e1-9cef-7268031136c3";
 
 document.addEventListener("DOMContentLoaded",()=>initializeFirebase());
 
 async function initializeFirebase(){
   const app = initializeApp(firebaseConfig);
   initializeAppCheck(app,{provider:new ReCaptchaV3Provider('6LdIDf8rAAAAAN29EDUYVkddlpw3QQy9ImSPFpm1'),isTokenAutoRefreshEnabled:true});
-  db = getFirestore(app); auth = getAuth(app);
+  db=getFirestore(app);auth=getAuth(app);
   initializeAppLogic();
 }
 
-async function generateDeviceHash(){
-  const fp = await FingerprintJS.load(); const r = await fp.get();
-  const traits = [navigator.userAgent,navigator.language,screen.width,screen.height,
-    navigator.hardwareConcurrency,Intl.DateTimeFormat().resolvedOptions().timeZone,
-    r.components.platform?.value||"",r.components.vendor?.value||""].join("|");
-  const buf = await crypto.subtle.digest("SHA-256",new TextEncoder().encode(traits));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+function setScreen(id){
+  document.querySelectorAll(".screen").forEach(el=>el.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
 
-function setScreen(id){document.querySelectorAll(".screen").forEach(el=>el.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");}
-function isInsideGeofence(lat,long){return geofences.some(g=>lat>=g.minLat&&lat<=g.maxLat&&long>=g.minLong&&long<=g.maxLong);}
-function showError(msg,type='location'){const el=(type==='location')?document.getElementById("location-error"):document.getElementById("student-id-error");if(!el)return;el.textContent=msg;el.classList.add("text-red-400","font-bold");}
+function isInsideGeofence(lat,long){
+  return geofences.some(g=>lat>=g.minLat&&lat<=g.maxLat&&long>=g.minLong&&long<=g.maxLong);
+}
 
-const geofences = [
+function showError(msg,type='location'){
+  const el=(type==='location')?document.getElementById("location-error"):document.getElementById("student-id-error");
+  if(el){el.textContent=msg;el.classList.add("text-red-400","font-bold");}
+}
+
+const geofences=[
   {minLat:33.508268,maxLat:33.511748,minLong:-112.130755,maxLong:-112.126984},
   {minLat:33.512279,maxLat:33.512623,minLong:-112.130699,maxLong:-112.130440},
   {minLat:33.6786695,maxLat:33.6789695,minLong:-112.256548,maxLong:-112.256248}
 ];
 
 function handleLocationCheck(){
-  if (!navigator.geolocation) return showError("Location not supported on this device.");
+  if(!navigator.geolocation)return showError("Location not supported on this device.");
   const errEl=document.getElementById("location-error");
   errEl.classList.remove("text-red-400","font-bold");
   errEl.textContent="Checking your location...";
@@ -211,13 +207,10 @@ function handleLocationCheck(){
       }else showError("You must be at the GCU Arena to vote!");
     },
     err=>{
-      const retry=document.getElementById("retry-location");
-      retry.classList.remove("hidden");
+      document.getElementById("retry-location").classList.remove("hidden");
       if(err.code===1){
         showError("Location access is blocked. Go to Settings → Safari or Chrome → Location → Allow or Ask Next Time.","location");
-      }else{
-        showError("Location access is needed to vote. Please refresh!");
-      }
+      }else showError("Location access is needed to vote. Please refresh!");
     },
     {timeout:10000,enableHighAccuracy:true}
   );
@@ -258,7 +251,7 @@ async function submitVote(voteId,btn){
       userId,
       deviceHash,
       authMethod,
-      verifiedStudentId: verifiedStudentId || null,
+      verifiedStudentId:verifiedStudentId||null,
       userAgent:navigator.userAgent
     };
     await runTransaction(db,async t=>{
@@ -267,7 +260,7 @@ async function submitVote(voteId,btn){
       t.set(vRef,data);
       t.set(fRef,{createdAt:data.createdAt,userId,voteId});
       if(verifiedStudentId){
-        const sidRef = doc(db,"student_ids",verifiedStudentId);
+        const sidRef=doc(db,"student_ids",verifiedStudentId);
         t.update(sidRef,{hasVoted:true});
       }
     });
@@ -299,6 +292,7 @@ async function checkExistingVote(){
 
 async function initializeAppLogic(){
   if(appInitialized)return;appInitialized=true;
+
   document.getElementById("location-btn").addEventListener("click",handleLocationCheck);
   document.getElementById("retry-location").addEventListener("click",()=>location.reload());
   document.getElementById("student-id-btn").addEventListener("click",handleStudentIdCheck);
@@ -311,15 +305,18 @@ async function initializeAppLogic(){
   document.getElementById("performers-container").addEventListener("click",handleCardSelection);
   document.getElementById("submit-vote-btn").addEventListener("click",()=>submitVote(selectedVoteId,document.getElementById("submit-vote-btn")));
 
-  try{deviceHash=await generateDeviceHash();}catch{showError("Unable to verify device identity.");}
-
   onAuthStateChanged(auth,async(u)=>{
     if(u){
       userId=u.uid;
+
+      // 🔒 Best practice fix: each device uses Firebase UID as unique device ID
+      deviceHash = userId;
+
       const sRef=doc(db,"lip_sync_2025_settings","state");
       onSnapshot(sRef,async(s)=>{
         if(!s.exists())return;
         votingEnabled=s.data().enabled;
+
         const header=document.getElementById("voting-header");
         const sub=document.getElementById("voting-subtext");
         const btn=document.getElementById("submit-vote-btn");
@@ -354,22 +351,23 @@ async function initializeAppLogic(){
 <!-- Autoplay fallback fix -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const video = document.getElementById('bg-video');
-  const style = document.createElement('style');
-  let autoplayWorked = false;
+  const video=document.getElementById('bg-video');
+  const style=document.createElement('style');
+  let autoplayWorked=false;
 
-  video.play().then(() => autoplayWorked = true).catch(() => {});
+  video.play().then(()=>autoplayWorked=true).catch(()=>{});
 
-  setTimeout(() => {
-    if (!autoplayWorked || video.paused) {
-      style.textContent = `
+  setTimeout(()=>{
+    if(!autoplayWorked||video.paused){
+      style.textContent=`
         body { background: radial-gradient(circle at 50% 20%, #111 0%, #000 100%) !important; }
         #bg-video { display: none !important; }
       `;
       document.head.appendChild(style);
     }
-  }, 1200);
+  },1200);
 });
 </script>
+
 </body>
 </html>
